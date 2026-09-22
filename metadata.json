@@ -1,0 +1,6 @@
+{
+  "name": "UdyogSetu - Smart Business Clearance & Compliance Platform",
+  "description": "Next-generation single window clearance system with AI regulatory intelligence, pre-validation document vault, risk-based fast-tracking, parallel department processing, and SLA delay analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
