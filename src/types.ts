@@ -16,25 +16,63 @@ export type PollutionCategory = 'Red Category' | 'Orange Category' | 'Green Cate
 export interface BusinessProfile {
   id: string;
   name: string;
+  businessType?: 'Private Limited' | 'Public Limited' | 'Partnership / LLP' | 'Proprietorship';
+  cin?: string;
   pan: string;
   gstin: string;
+  udyamRegistration?: string;
+  authorizedPersonName?: string;
+  authorizedPersonDesignation?: string;
+  mobile?: string;
+  email?: string;
   sector: string;
+  activityDescription?: string;
+  rawMaterials?: string[];
+  finishedProducts?: string[];
+  byProducts?: string[];
   state: string;
   district: string;
+  taluka?: string;
+  village?: string;
+  plotNumber?: string;
+  pincode?: string;
+  address?: string;
   scale: 'Micro' | 'Small' | 'Medium' | 'Large';
   investmentCrores: number;
+  builtUpAreaSqFt?: number;
   workforce: number;
+  contractWorkersCount?: number;
   connectedPowerKw: number;
+  isMIDC?: boolean;
   handlesHazardous: boolean;
+  hazardDetails?: string;
+  hazardControlMeasures?: string;
+  hasBoiler?: boolean;
+  boilerCapacityTph?: number;
+  dgSetKva?: number;
+  waterExtractionRequirementKld?: number;
   landType: 'Industrial Park (Allotted)' | 'Agricultural (Requires CLU)' | 'Private Commercial' | 'SEZ Free Trade Zone';
   stage: 'Pre-Establishment' | 'Pre-Operation' | 'Expansion';
+  isProfileComplete?: boolean;
 }
+
+export type DocumentCategory = 
+  | 'Company / Identity' 
+  | 'Land & Property' 
+  | 'Labour & Employees' 
+  | 'Environmental' 
+  | 'Factory & Safety' 
+  | 'Utilities & Other Approvals'
+  | 'Statutory' 
+  | 'Technical' 
+  | 'Financial' 
+  | 'Land & Building';
 
 export interface DocumentItem {
   id: string;
   name: string;
   type: string;
-  category: 'Statutory' | 'Technical' | 'Financial' | 'Land & Building';
+  category: DocumentCategory;
   fileSize: string;
   uploadDate: string;
   expiryDate?: string;
@@ -48,6 +86,7 @@ export interface DocumentItem {
   missingOrInvalidItems?: string[];
   correctionGuidance?: string;
   linkedApprovals: string[];
+  usedBy?: string[];
 }
 
 export interface QueryItem {
@@ -91,6 +130,11 @@ export interface ApprovalItem {
   requiredDocs: string[];
   submittedDocs: string[];
   submittedDate?: string;
+  appliedDate?: string;
+  paymentStatus?: string;
+  paymentMode?: string;
+  transactionId?: string;
+  applicationRefNumber?: string;
   approvalDate?: string;
   certificateNumber?: string;
   validityExpiry?: string;
@@ -98,6 +142,19 @@ export interface ApprovalItem {
   inspection?: InspectionDetails;
   feeAmount: number;
   stageName: string;
+  statusHistory?: Array<{
+    title: string;
+    date: string;
+    stage: string;
+    status: 'completed' | 'current' | 'pending';
+    description?: string;
+  }>;
+  verifiedDocDetails?: Array<{
+    name: string;
+    size: string;
+    verifiedAt: string;
+    docType: string;
+  }>;
 }
 
 export interface IncentiveScheme {

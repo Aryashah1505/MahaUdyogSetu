@@ -1,239 +1,143 @@
 import { BusinessProfile, ApprovalItem, DocumentItem, IncentiveScheme, DepartmentMetric } from '../types';
 
+/**
+ * DEFAULT BENCHMARK COMPANY (Used only as initial template fallback when no user is logged in)
+ * Real user data from registration & login overrides this completely.
+ */
+export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
+  id: 'BIZ-MH-FGHIJ-001',
+  name: 'Western Maharashtra Engineering Private Limited',
+  businessType: 'Private Limited',
+  cin: 'U28990MH2026PTC654321',
+  pan: 'FGHIJ5678K',
+  gstin: '27FGHIJ5678K1Z8',
+  udyamRegistration: 'UDYAM-MH-26-0048192',
+  authorizedPersonName: 'Arya Darshan Shah',
+  authorizedPersonDesignation: 'Managing Director',
+  mobile: '9825204240',
+  email: 'arya2007in@gmail.com',
+  sector: 'Engineering & Heavy Manufacturing',
+  activityDescription: 'Precision CNC Machining, Heavy Tooling & Automotive Sub-Assemblies',
+  rawMaterials: ['Forged Steel Billets', 'Alloy Castings', 'Coolant Concentrates', 'Hydraulic Oils'],
+  finishedProducts: ['Precision Automotive Gearboxes', 'Shafts', 'Hydraulic Cylinders'],
+  byProducts: ['Ferrous Metal Scrap', 'Spent Oil (Categorized Wastes)'],
+  state: 'Maharashtra',
+  district: 'Nashik',
+  taluka: 'Ambad',
+  village: 'Ambad MIDC Industrial Zone',
+  plotNumber: 'Plot No. 18, MIDC Sector C',
+  pincode: '422010',
+  address: 'Plot No. 18, Ambad MIDC, Ambad Industrial Estate, Nashik, Maharashtra – 422010',
+  scale: 'Medium',
+  investmentCrores: 18.5,
+  builtUpAreaSqFt: 42000,
+  workforce: 75,
+  contractWorkersCount: 30,
+  connectedPowerKw: 350,
+  isMIDC: true,
+  handlesHazardous: false,
+  hazardDetails: 'Machine lubrication oils, cutting oils, paint aerosols (Stored in dedicated bunded enclosure)',
+  hazardControlMeasures: 'Closed loop CNC coolant extraction, secondary spill containment drums, Class-B Fire Extinguishers',
+  hasBoiler: false,
+  boilerCapacityTph: 0,
+  dgSetKva: 250,
+  waterExtractionRequirementKld: 15,
+  landType: 'Industrial Park (Allotted)',
+  stage: 'Pre-Establishment',
+  isProfileComplete: true
+};
+
 export const INITIAL_BUSINESS_PROFILES: BusinessProfile[] = [
-  {
-    id: 'BIZ-2026-IND-01',
-    name: 'Bharat Precision BioTech Pvt Ltd',
-    pan: 'AABCB1294F',
-    gstin: '24AABCB1294F1Z3',
-    sector: 'Pharmaceuticals & APIs',
-    state: 'Gujarat',
-    district: 'Ahmedabad (Sanand GIDC)',
-    scale: 'Medium',
-    investmentCrores: 48.5,
-    workforce: 185,
-    connectedPowerKw: 850,
-    handlesHazardous: true,
-    landType: 'Industrial Park (Allotted)',
-    stage: 'Pre-Establishment',
-  },
-  {
-    id: 'BIZ-2026-IND-02',
-    name: 'Garuda Clean Energy & EV Systems',
-    pan: 'AABCG5582K',
-    gstin: '29AABCG5582K1ZD',
-    sector: 'Automotive & EV Components',
-    state: 'Karnataka',
-    district: 'Bengaluru Rural (Doddaballapur)',
-    scale: 'Small',
-    investmentCrores: 14.2,
-    workforce: 65,
-    connectedPowerKw: 220,
-    handlesHazardous: false,
-    landType: 'Industrial Park (Allotted)',
-    stage: 'Pre-Establishment',
-  },
-  {
-    id: 'BIZ-2026-IND-03',
-    name: 'Kisan Shakti Organic Agro Mills',
-    pan: 'AACCK9914P',
-    gstin: '27AACCK9914P1ZE',
-    sector: 'Food Processing & Agri Logistics',
-    state: 'Maharashtra',
-    district: 'Nashik Industrial Zone',
-    scale: 'Small',
-    investmentCrores: 8.5,
-    workforce: 42,
-    connectedPowerKw: 110,
-    handlesHazardous: false,
-    landType: 'Agricultural (Requires CLU)',
-    stage: 'Pre-Operation',
-  }
+  DEFAULT_BUSINESS_PROFILE
 ];
 
-export const INITIAL_DOCUMENTS: DocumentItem[] = [
-  {
-    id: 'DOC-PAN-01',
-    name: 'Certificate of Incorporation & Company PAN Card',
-    type: 'PDF',
-    category: 'Statutory',
-    fileSize: '1.4 MB',
-    uploadDate: '2026-03-10',
-    expiryDate: 'Permanent',
-    status: 'verified',
-    validationScore: 99,
-    checklistResults: [
-      { check: 'Corporate Identification Number (CIN) Check', passed: true, detail: 'MCA registry verified: U24230GJ2024PTC148821' },
-      { check: 'PAN Name and GSTIN match', passed: true, detail: '100% string alignment with registered applicant' },
-      { check: 'Authorized Director DSC', passed: true, detail: 'Valid Class-3 Digital Signature detected' },
-    ],
-    missingOrInvalidItems: [],
-    correctionGuidance: 'Document is digitally verified and permanently active in the Single Document Vault.',
-    linkedApprovals: ['APP-PCB-01', 'APP-FIRE-01', 'APP-FACT-01', 'APP-DISCOM-01']
-  },
-  {
-    id: 'DOC-LAND-02',
-    name: 'GIDC Industrial Plot Allotment Letter & Lease Deed',
-    type: 'PDF',
-    category: 'Land & Building',
-    fileSize: '3.8 MB',
-    uploadDate: '2026-03-12',
-    expiryDate: '2099-12-31',
-    status: 'verified',
-    validationScore: 95,
-    checklistResults: [
-      { check: 'Cadastral Survey & Plot Coordinates', passed: true, detail: 'Sanand Industrial Phase II, Plot No. 448/B mapped' },
-      { check: 'Sub-Registrar Stamp Duty Endorsement', passed: true, detail: 'Registered with e-Stamping receipt verified' },
-      { check: 'Zoning & Master Plan Clearance', passed: true, detail: 'Industrial General (Zone I-G) approved' }
-    ],
-    missingOrInvalidItems: [],
-    linkedApprovals: ['APP-PCB-01', 'APP-TOWN-01', 'APP-DISCOM-01']
-  },
-  {
-    id: 'DOC-ARCH-03',
-    name: 'Comprehensive Factory Architectural & Site Layout Plan',
-    type: 'PDF',
-    category: 'Technical',
-    fileSize: '8.2 MB',
-    uploadDate: '2026-03-14',
-    expiryDate: 'N/A',
-    status: 'needs_correction',
-    validationScore: 68,
-    checklistResults: [
-      { check: 'Architect CoA License Validity', passed: true, detail: 'Architect license valid till 2028' },
-      { check: 'Emergency Evacuation & Fire Hydrant Pathways', passed: false, detail: '6-meter peripheral setback drive-way obstructed on East boundary' },
-      { check: 'Effluent Treatment Plant (ETP) Demarcation', passed: true, detail: 'Zero Liquid Discharge (ZLD) unit marked clearly' }
-    ],
-    missingOrInvalidItems: [
-      'Fire tender turning radius (12.5m) missing on north-east corner blueprint.',
-      'Annexure IV: Structural Engineer Wind & Seismic certificate stamp missing.'
-    ],
-    correctionGuidance: 'Revise drawing to maintain uninterrupted 6m driveway clearance and get structural engineer seal on page 4.',
-    linkedApprovals: ['APP-FIRE-01', 'APP-FACT-01']
-  },
-  {
-    id: 'DOC-ENV-04',
-    name: 'Comprehensive Environmental Management Plan (EMP) & ZLD Specs',
-    type: 'PDF',
-    category: 'Technical',
-    fileSize: '5.6 MB',
-    uploadDate: '2026-03-15',
-    expiryDate: '2031-03-15',
-    status: 'verified',
-    validationScore: 92,
-    checklistResults: [
-      { check: 'Pollution Control Board Category Mapping', passed: true, detail: 'Red Category chemical synthesis compliant' },
-      { check: 'Air Emission Chimney Stack Calculations', passed: true, detail: 'Bag filter and wet scrubber height standards satisfied' },
-      { check: 'Hazardous Waste Storage Area (TSDF tie-up)', passed: true, detail: 'MoU with Gujarat Enviro TSDF attached' }
-    ],
-    missingOrInvalidItems: [],
-    linkedApprovals: ['APP-PCB-01']
-  },
-  {
-    id: 'DOC-ELEC-05',
-    name: 'Single Line Electrical Diagram (SLD) & Transformer Layout',
-    type: 'PDF',
-    category: 'Technical',
-    fileSize: '2.1 MB',
-    uploadDate: '2026-03-16',
-    expiryDate: 'N/A',
-    status: 'verified',
-    validationScore: 96,
-    checklistResults: [
-      { check: 'BEE Grade Certified Electrical Consultant Seal', passed: true, detail: 'Chartered Electrical Engineer seal verified' },
-      { check: 'Connected Load (850 kW) vs Substation Capacity', passed: true, detail: '1000 kVA step-down 11kV/415V configured with dual bus coupler' }
-    ],
-    missingOrInvalidItems: [],
-    linkedApprovals: ['APP-DISCOM-01', 'APP-FACT-01']
-  }
-];
+export const INITIAL_DOCUMENTS: DocumentItem[] = [];
 
 export const INITIAL_APPROVALS: ApprovalItem[] = [
   {
     id: 'APP-PCB-01',
     code: 'CTE-AIR-WATER',
     name: 'Consent to Establish (CTE) under Water & Air Acts',
-    department: 'State Pollution Control Board (GPCB)',
+    department: 'Maharashtra Pollution Control Board (MPCB)',
     category: 'Environmental & Pollution',
-    slaDays: 30,
-    daysElapsed: 12,
-    riskTier: 'HIGH',
-    fastTrack: false,
+    slaDays: 21,
+    daysElapsed: 8,
+    riskTier: 'LOW',
+    fastTrack: true,
     status: 'under_scrutiny',
-    stageName: 'Department Technical Committee Review',
-    feeAmount: 65000,
+    stageName: 'Regional Officer Technical Scrutiny (Nashik)',
+    feeAmount: 25000,
     requiredDocs: [
       'Certificate of Incorporation & Company PAN Card',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
-      'Comprehensive Environmental Management Plan (EMP) & ZLD Specs'
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Comprehensive Factory Architectural & Site Layout Plan'
     ],
     submittedDocs: [
       'Certificate of Incorporation & Company PAN Card',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
-      'Comprehensive Environmental Management Plan (EMP) & ZLD Specs'
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed'
     ],
-    submittedDate: '2026-03-18',
+    submittedDate: '2026-03-20',
     queries: [
       {
-        id: 'QRY-PCB-992',
+        id: 'QRY-MPCB-401',
         approvalId: 'APP-PCB-01',
-        department: 'State Pollution Control Board (GPCB)',
-        officerName: 'Er. Rajesh V. Mehta (Sr. Env. Engineer)',
-        dateRaised: '2026-03-20',
-        deadlineDate: '2026-03-27',
-        queryText: 'Please submit solvent recovery balance sheet and mass balance calculation for batch synthesis unit 2.',
+        department: 'Maharashtra Pollution Control Board (MPCB)',
+        officerName: 'Er. S. R. Deshmukh (Sub-Regional Officer)',
+        dateRaised: '2026-03-22',
+        deadlineDate: '2026-03-29',
+        queryText: 'Please submit CNC coolant recycling layout and closed drainage circuit specifications.',
         status: 'pending',
-        responseDraft: 'Mass balance data sheets and 98.2% condenser solvent recovery audit attached from certified chemical engineer.'
+        responseDraft: 'Coolant filtration recovery diagram and zero liquid discharge closed loop specs attached.'
       }
     ],
     inspection: {
-      id: 'INSP-2026-08',
+      id: 'INSP-2026-MH-01',
       inspectionType: 'Joint Synchronized',
-      departments: ['GPCB Pollution Board', 'Directorate of Industrial Safety (DISH)', 'Fire Emergency'],
-      scheduledDate: '2026-03-29',
-      leadOfficer: 'Joint Inspection Team (Coordinator: Er. R. Mehta)',
-      contactNumber: '+91 79 2322 1084',
+      departments: ['MPCB Pollution Board', 'Directorate of Industrial Safety (DISH)', 'MIDC Fire Services'],
+      scheduledDate: '2026-03-30',
+      leadOfficer: 'Joint Inspection Team (Coordinator: Er. S. Deshmukh)',
+      contactNumber: '+91 253 235 1244',
       status: 'scheduled',
       checklistItems: [
         { item: 'Verification of green belt boundary tree plantation (33% area)', compliant: true },
-        { item: 'Inspection of hazardous waste covered staging shed', compliant: true },
-        { item: 'ETP effluent monitoring online TOC/COD sensor installation', compliant: false }
+        { item: 'Inspection of CNC oil & coolant containment trench', compliant: true },
+        { item: 'Acoustic enclosure verification for air compressor room', compliant: false }
       ],
-      remarks: 'Scheduled jointly with Fire department to minimize business disruption.'
+      remarks: 'Synchronized joint visit scheduled at Plot 18 Ambad MIDC to prevent multiple disruptions.'
     }
   },
   {
     id: 'APP-FIRE-01',
     code: 'NOC-PROV-FIRE',
     name: 'Provisional Fire Safety No Objection Certificate (NOC)',
-    department: 'Fire & Emergency Services',
+    department: 'Maharashtra Fire Services & MIDC Fire Dept',
     category: 'Safety & Hazard',
-    slaDays: 15,
-    daysElapsed: 8,
-    riskTier: 'HIGH',
-    fastTrack: false,
+    slaDays: 14,
+    daysElapsed: 6,
+    riskTier: 'LOW',
+    fastTrack: true,
     status: 'query_raised',
-    stageName: 'Awaiting Applicant Query Response',
-    feeAmount: 25000,
+    stageName: 'Awaiting Applicant Query Clarification',
+    feeAmount: 15000,
     requiredDocs: [
       'Comprehensive Factory Architectural & Site Layout Plan',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
       'Certificate of Incorporation & Company PAN Card'
     ],
     submittedDocs: [
       'Certificate of Incorporation & Company PAN Card',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed'
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed'
     ],
-    submittedDate: '2026-03-18',
+    submittedDate: '2026-03-20',
     queries: [
       {
-        id: 'QRY-FIRE-104',
+        id: 'QRY-FIRE-202',
         approvalId: 'APP-FIRE-01',
-        department: 'Fire & Emergency Services',
-        officerName: 'Divisional Fire Officer K. S. Solanki',
-        dateRaised: '2026-03-21',
-        deadlineDate: '2026-03-28',
-        queryText: 'Architectural blueprint shows 4.5m driveway along East wing. Minimum 6.0m heavy fire tender turning radius is mandatory under National Building Code Part 4.',
+        department: 'Maharashtra Fire Services & MIDC Fire Dept',
+        officerName: 'Divisional Fire Officer A. P. Kulkarni',
+        dateRaised: '2026-03-22',
+        deadlineDate: '2026-03-29',
+        queryText: 'Architectural blueprint shows 4.8m driveway along East boundary. Minimum 6.0m heavy fire tender turning access is required under National Building Code Part 4.',
         status: 'pending',
         responseDraft: 'Revised architectural drawing attached showing clear 6.2m driveway and 14m circular turning radius.'
       }
@@ -241,45 +145,45 @@ export const INITIAL_APPROVALS: ApprovalItem[] = [
   },
   {
     id: 'APP-DISCOM-01',
-    code: 'PWR-HT-850',
-    name: 'Industrial High Tension (11kV) Power Load Sanction',
-    department: 'State Electricity Distribution Co. (UGVCL)',
+    code: 'PWR-HT-350',
+    name: 'Industrial High Tension (11kV) Power Load Sanction (350 kW)',
+    department: 'Maharashtra State Electricity Distribution Co. (MSEDCL)',
     category: 'Utility & Infrastructure',
     slaDays: 10,
     daysElapsed: 5,
     riskTier: 'LOW',
     fastTrack: true,
     status: 'approved',
-    stageName: 'Approval Order Dispatched',
-    feeAmount: 42000,
+    stageName: 'Sanction Order Executed & Dispatched',
+    feeAmount: 35000,
     requiredDocs: [
       'Certificate of Incorporation & Company PAN Card',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
       'Single Line Electrical Diagram (SLD) & Transformer Layout'
     ],
     submittedDocs: [
       'Certificate of Incorporation & Company PAN Card',
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
       'Single Line Electrical Diagram (SLD) & Transformer Layout'
     ],
-    submittedDate: '2026-03-17',
-    approvalDate: '2026-03-21',
-    certificateNumber: 'UGVCL/SANAND-II/HT/2026/8892',
-    validityExpiry: '2029-03-20',
+    submittedDate: '2026-03-19',
+    approvalDate: '2026-03-23',
+    certificateNumber: 'MSEDCL/NSK-AMBAD/HT/2026/4192',
+    validityExpiry: '2029-03-31',
     queries: []
   },
   {
     id: 'APP-FACT-01',
     code: 'DISH-PLN-APP',
-    name: 'Factory Building Plan Approval & Registration',
-    department: 'Directorate of Industrial Safety & Health (DISH)',
+    name: 'Factory Building Plan Approval & Registration License',
+    department: 'Directorate of Industrial Safety & Health (DISH Maharashtra)',
     category: 'Labor & Factory Safety',
     slaDays: 20,
-    daysElapsed: 7,
+    daysElapsed: 6,
     riskTier: 'MEDIUM',
     fastTrack: false,
     status: 'under_scrutiny',
-    stageName: 'Scrutiny of Machine Layout & Ventilation',
+    stageName: 'Machinery Layout & Occupational Safety Scrutiny',
     feeAmount: 18500,
     requiredDocs: [
       'Comprehensive Factory Architectural & Site Layout Plan',
@@ -290,146 +194,146 @@ export const INITIAL_APPROVALS: ApprovalItem[] = [
       'Certificate of Incorporation & Company PAN Card',
       'Single Line Electrical Diagram (SLD) & Transformer Layout'
     ],
-    submittedDate: '2026-03-19',
+    submittedDate: '2026-03-20',
     queries: []
   },
   {
     id: 'APP-TOWN-01',
-    code: 'ULB-DEV-PERM',
-    name: 'Industrial Layout Development & Construction Permission',
-    department: 'Urban Development Authority / GIDC Estate Manager',
+    code: 'MIDC-DEV-PERM',
+    name: 'MIDC Industrial Building Plan Sanction & Commencement Certificate',
+    department: 'MIDC Industrial Area Development Authority (Nashik)',
     category: 'Municipal & Land',
-    slaDays: 21,
-    daysElapsed: 6,
+    slaDays: 15,
+    daysElapsed: 5,
     riskTier: 'LOW',
     fastTrack: true,
     status: 'under_scrutiny',
     stageName: 'Green-Channel Deemed Scrutiny',
-    feeAmount: 32000,
+    feeAmount: 22000,
     requiredDocs: [
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
       'Certificate of Incorporation & Company PAN Card'
     ],
     submittedDocs: [
-      'GIDC Industrial Plot Allotment Letter & Lease Deed',
+      'Ambad MIDC Industrial Plot Allotment Letter & Lease Deed',
       'Certificate of Incorporation & Company PAN Card'
     ],
-    submittedDate: '2026-03-19',
+    submittedDate: '2026-03-20',
     queries: []
   }
 ];
 
 export const INCENTIVE_SCHEMES: IncentiveScheme[] = [
   {
-    id: 'SCH-PLI-PHARMA',
-    name: 'Production Linked Incentive (PLI) for Bulk Drugs & APIs',
-    ministry: 'Ministry of Chemicals & Fertilizers, GoI',
-    coverage: 'Financial incentive of 5% to 20% on incremental sales over base year',
-    financialBenefit: 'Up to ₹25.0 Crores over 5 Years',
-    eligibility: 'Manufacturing APIs, Key Starting Materials (KSM), investment > ₹20 Cr',
+    id: 'SCH-MAHA-PSI',
+    name: 'Maharashtra Package Scheme of Incentives (PSI 2024)',
+    ministry: 'Industries Department, Government of Maharashtra',
+    coverage: 'Up to 50% fixed capital investment subsidy for units in Zone C & D (Nashik/Ambad)',
+    financialBenefit: 'Lump-sum capital grant up to ₹2.5 Crores + 5% Interest Subsidy',
+    eligibility: 'New engineering manufacturing unit established in MIDC with investment in plant & machinery.',
     status: 'Eligible',
-    deadline: '2026-06-30',
+    deadline: '2026-12-31',
     matchScore: 98
   },
   {
-    id: 'SCH-GUJ-CAPSUB',
-    name: 'Gujarat Industrial Policy Capital Investment Subsidy',
-    ministry: 'Industries & Mines Department, Govt. of Gujarat',
-    coverage: '12% Capital Investment Subsidy on eligible fixed capital investment',
-    financialBenefit: 'Up to ₹5.8 Crores Lump-Sum Grant',
-    eligibility: 'New manufacturing enterprise in notified Taluka Category 1/2',
+    id: 'SCH-MSEDCL-PWR',
+    name: 'Power Tariff Subsidy for MIDC Industrial Units',
+    ministry: 'MSEDCL & Energy Department, Govt of Maharashtra',
+    coverage: '₹1.50 per unit electricity tariff concession for 5 years',
+    financialBenefit: 'Estimated ₹14.8 Lakhs/Year Operational Cost Savings',
+    eligibility: 'Industrial units having connected load > 65 kW in designated MIDC industrial zones.',
     status: 'Eligible',
-    deadline: '2026-09-15',
+    deadline: 'Rolling Annual',
     matchScore: 94
   },
   {
     id: 'SCH-ZED-MSME',
     name: 'MSME Zero Defect Zero Effect (ZED) Certification & Subsidy',
-    ministry: 'Ministry of Micro, Small and Medium Enterprises',
-    coverage: '80% subsidy on cost of ZED audit and clean technology installation',
+    ministry: 'Ministry of Micro, Small and Medium Enterprises, GoI',
+    coverage: '80% subsidy on cost of ZED audit and precision manufacturing tooling',
     financialBenefit: '₹5.0 Lakhs per plant + 1% Concessional Interest Rate',
-    eligibility: 'Active Udyam registered MSME with clean discharge commitments',
+    eligibility: 'Active Udyam registered MSME with precision quality standards.',
     status: 'Applied',
     deadline: '2026-12-31',
-    matchScore: 88
+    matchScore: 91
   },
   {
     id: 'SCH-SOLAR-IND',
-    name: 'State Rooftop Solar & Green Power Duty Exemption',
-    ministry: 'Energy & Petrochemicals Department',
+    name: 'Maharashtra Industrial Rooftop Solar Green Power Duty Waiver',
+    ministry: 'MEDA (Maharashtra Energy Development Agency)',
     coverage: '100% exemption from Electricity Duty for 5 years on captive green power',
-    financialBenefit: 'Estimated ₹18.4 Lakhs/Year Operational Savings',
-    eligibility: 'Industrial consumers installing rooftop solar > 100 kW',
+    financialBenefit: 'Estimated ₹8.5 Lakhs/Year Operational Savings',
+    eligibility: 'Industrial consumers installing rooftop solar > 50 kW',
     status: 'Eligible',
     deadline: 'Rolling Annual',
-    matchScore: 91
+    matchScore: 88
   }
 ];
 
 export const DEPARTMENT_METRICS: DepartmentMetric[] = [
   {
-    department: 'State Pollution Control Board (GPCB)',
+    department: 'Maharashtra Pollution Control Board (MPCB)',
     code: 'PCB',
     iconName: 'ShieldAlert',
-    assignedCount: 142,
-    underScrutinyCount: 68,
-    approvedCount: 54,
-    queriesPendingCount: 20,
-    avgTurnaroundDays: 24.6,
-    slaTargetDays: 30,
-    slaAdherenceRate: 78.2,
-    criticalBottlenecks: 'Effluent mass balance verification desk experiencing 6.2 day queue delay.'
+    assignedCount: 118,
+    underScrutinyCount: 52,
+    approvedCount: 58,
+    queriesPendingCount: 8,
+    avgTurnaroundDays: 16.4,
+    slaTargetDays: 21,
+    slaAdherenceRate: 86.4,
+    criticalBottlenecks: 'Effluent drainage layout verification desk handling surge in Nashik zone.'
   },
   {
-    department: 'Fire & Emergency Services',
+    department: 'Maharashtra Fire Services & MIDC Fire',
     code: 'FIRE',
     iconName: 'Flame',
-    assignedCount: 98,
-    underScrutinyCount: 34,
-    approvedCount: 46,
-    queriesPendingCount: 18,
-    avgTurnaroundDays: 16.8,
-    slaTargetDays: 15,
-    slaAdherenceRate: 64.5,
-    criticalBottlenecks: 'Site inspection scheduling delays due to limited inspector fleet.'
+    assignedCount: 84,
+    underScrutinyCount: 26,
+    approvedCount: 48,
+    queriesPendingCount: 10,
+    avgTurnaroundDays: 11.2,
+    slaTargetDays: 14,
+    slaAdherenceRate: 82.1,
+    criticalBottlenecks: 'Site inspection scheduling delays due to limited inspector fleet in industrial belts.'
   },
   {
     department: 'Directorate of Industrial Safety (DISH)',
     code: 'DISH',
     iconName: 'HardHat',
-    assignedCount: 84,
-    underScrutinyCount: 28,
-    approvedCount: 50,
-    queriesPendingCount: 6,
-    avgTurnaroundDays: 15.2,
+    assignedCount: 72,
+    underScrutinyCount: 22,
+    approvedCount: 46,
+    queriesPendingCount: 4,
+    avgTurnaroundDays: 14.1,
     slaTargetDays: 20,
-    slaAdherenceRate: 88.1,
-    criticalBottlenecks: 'Boiler safety certified inspector shortage in chemical industrial belts.'
+    slaAdherenceRate: 91.5,
+    criticalBottlenecks: 'Machinery safety certification review for heavy CNC lines.'
   },
   {
-    department: 'Electricity Distribution (DISCOM)',
+    department: 'Electricity Distribution (MSEDCL)',
     code: 'DISCOM',
     iconName: 'Zap',
-    assignedCount: 112,
-    underScrutinyCount: 14,
-    approvedCount: 94,
+    assignedCount: 96,
+    underScrutinyCount: 12,
+    approvedCount: 80,
     queriesPendingCount: 4,
-    avgTurnaroundDays: 6.8,
+    avgTurnaroundDays: 6.2,
     slaTargetDays: 10,
-    slaAdherenceRate: 94.6,
-    criticalBottlenecks: 'Low bottleneck; feeder availability mapping automated via GIS.'
+    slaAdherenceRate: 95.8,
+    criticalBottlenecks: 'Low bottleneck; feeder line GIS mapping automated.'
   },
   {
-    department: 'Town Planning & Urban Local Body',
+    department: 'MIDC Industrial Area Development Authority',
     code: 'TOWN',
     iconName: 'Building2',
-    assignedCount: 76,
-    underScrutinyCount: 22,
-    approvedCount: 48,
-    queriesPendingCount: 6,
-    avgTurnaroundDays: 14.1,
-    slaTargetDays: 21,
-    slaAdherenceRate: 84.2,
-    criticalBottlenecks: 'Revenue boundary physical verification with village survey records.'
+    assignedCount: 64,
+    underScrutinyCount: 18,
+    approvedCount: 42,
+    queriesPendingCount: 4,
+    avgTurnaroundDays: 10.5,
+    slaTargetDays: 15,
+    slaAdherenceRate: 89.2,
+    criticalBottlenecks: 'Plot boundary coordination with Ambad Estate Manager.'
   }
 ];

@@ -1,239 +1,596 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  INITIAL_BUSINESS_PROFILES, 
-  INITIAL_APPROVALS, 
-  INITIAL_DOCUMENTS, 
+  DEFAULT_BUSINESS_PROFILE,
   DEPARTMENT_METRICS, 
-  INCENTIVE_SCHEMES 
 } from './data/mockData';
-import { BusinessProfile } from './types';
+import { 
+  generateDynamicApprovals, 
+  generateInitialDocuments, 
+  getMatchedSchemes 
+} from './data/regulatoryEngine';
+import { BusinessProfile, ApprovalItem, DocumentItem, IncentiveScheme } from './types';
 import { ExecutiveBriefing } from './components/ExecutiveBriefing';
 import { ProcessFlowchartViewer } from './components/ProcessFlowchartViewer';
-import { ApplicantDashboard } from './components/ApplicantDashboard';
 import { DepartmentDashboard } from './components/DepartmentDashboard';
+import { LoginPage } from './components/LoginPage';
+import { IndianEntityRegistration } from './components/IndianEntityRegistration';
+import { MaitriPortalLayout } from './components/MaitriPortalLayout';
 import { 
   Building2, 
   ShieldCheck, 
   GitBranch, 
   FileText, 
-  Sparkles, 
-  Bell, 
-  Search, 
-  ChevronDown, 
-  ExternalLink,
-  Zap,
-  Info
+  UserCheck, 
+  LogOut 
 } from 'lucide-react';
 
-export default function App() {
+import { ApplyVerifyHubPage } from './components/public/ApplyVerifyHubPage';
+import { ApplyForServicesPage } from './components/public/ApplyForServicesPage';
+import { ListOfServicesPage } from './components/public/ListOfServicesPage';
+import { VerifyPermissionPage } from './components/public/VerifyPermissionPage';
+
+import { GrievanceLandingPage } from './components/grievance/GrievanceLandingPage';
+import { RegisterGrievancePage } from './components/grievance/RegisterGrievancePage';
+import { CheckStatusPage } from './components/grievance/CheckStatusPage';
+import { RegisterQueryPage } from './components/grievance/RegisterQueryPage';
+
+import { InvestLandingPage } from './components/invest/InvestLandingPage';
+import { KnowYourApprovalsPage } from './components/invest/KnowYourApprovalsPage';
+import { IncentiveCalculatorPage } from './components/invest/IncentiveCalculatorPage';
+import { TestingLabsPage } from './components/invest/TestingLabsPage';
+import { InvestmentPlannerPage } from './components/invest/InvestmentPlannerPage';
+
+import { PublicDashboardPage } from './components/public_dashboard/PublicDashboardPage';
+import { DepartmentPublicDetailPage } from './components/public_dashboard/DepartmentPublicDetailPage';
+
+import { FeedbackPage } from './components/feedback/FeedbackPage';
+import { MainPortalPage } from './components/portal/MainPortalPage';
+import { LanguageSelector } from './components/common/LanguageSelector';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
+
+function AppContent() {
+  const navigate = useNavigate();
+  const { isAuthenticated, activeProfile, updateProfile, logout } = useAuth();
+
   // Navigation view: 'applicant' | 'department' | 'flowchart' | 'briefing'
   const [currentView, setCurrentView] = useState<'applicant' | 'department' | 'flowchart' | 'briefing'>('applicant');
-  
-  // Selected enterprise profile
-  const [selectedProfileIndex, setSelectedProfileIndex] = useState(0);
-  const activeProfile = INITIAL_BUSINESS_PROFILES[selectedProfileIndex];
 
-  // Global state for live interaction across views
-  const [approvals, setApprovals] = useState(INITIAL_APPROVALS);
-  const [documents, setDocuments] = useState(INITIAL_DOCUMENTS);
-  const [departmentMetrics, setDepartmentMetrics] = useState(DEPARTMENT_METRICS);
+  // Post-login Onboarding Screen to collect Indian Entity details if requested
+  const [showEntityForm, setShowEntityForm] = useState<boolean>(false);
+
+  // Dynamic Approvals, Documents & Schemes generated strictly from active profile
+  const [approvals, setApprovals] = useState<ApprovalItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mahau_active_approvals');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return generateDynamicApprovals(activeProfile);
+  });
+
+  const [documents, setDocuments] = useState<DocumentItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mahau_active_documents');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return generateInitialDocuments(activeProfile);
+  });
+
+  const [schemes, setSchemes] = useState<IncentiveScheme[]>(() => getMatchedSchemes(activeProfile));
+  const [departmentMetrics] = useState(DEPARTMENT_METRICS);
+
+  const handleUpdateDocuments = (newDocs: DocumentItem[]) => {
+    setDocuments(newDocs);
+    try {
+      localStorage.setItem('mahau_active_documents', JSON.stringify(newDocs));
+    } catch (e) {}
+  };
+
+  const handleUpdateApprovals = (newApprovals: ApprovalItem[]) => {
+    setApprovals(newApprovals);
+    try {
+      localStorage.setItem('mahau_active_approvals', JSON.stringify(newApprovals));
+    } catch (e) {}
+  };
+
+  // Live persistent fetch for company applications & documents from Supabase API
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveCompanyData() {
+      const storedToken = sessionStorage.getItem('mahau_session_token');
+      if (!storedToken) return;
+
+      try {
+        // 1. Fetch Applications
+        const appRes = await fetch('/api/applications', {
+          headers: {
+            Authorization: `Bearer ${storedToken}`
+          }
+        });
+        if (appRes.ok) {
+          const data = await appRes.json();
+          if (data.applications && Array.isArray(data.applications) && data.applications.length > 0 && isMounted) {
+            setApprovals(data.applications);
+            try {
+              localStorage.setItem('mahau_active_approvals', JSON.stringify(data.applications));
+            } catch (e) {}
+          }
+        }
+
+        // 2. Fetch Documents Vault
+        const docRes = await fetch('/api/documents', {
+          headers: {
+            Authorization: `Bearer ${storedToken}`
+          }
+        });
+        if (docRes.ok) {
+          const docData = await docRes.json();
+          if (docData.documents && Array.isArray(docData.documents) && isMounted) {
+            setDocuments(docData.documents);
+            try {
+              localStorage.setItem('mahau_active_documents', JSON.stringify(docData.documents));
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.warn('Live company data sync notice:', err);
+      }
+    }
+
+    if (isAuthenticated) {
+      fetchLiveCompanyData();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, activeProfile.id]);
+
+  // When active company profile updates, dynamically update clearances and documents
+  const handleUpdateActiveProfile = (newProfile: BusinessProfile) => {
+    updateProfile(newProfile);
+
+    // Synchronize dynamic approvals & documents with new profile parameters
+    const newApprovals = generateDynamicApprovals(newProfile);
+    const newDocs = generateInitialDocuments(newProfile);
+    const newSchemes = getMatchedSchemes(newProfile);
+
+    setApprovals(newApprovals);
+    setDocuments(newDocs);
+    setSchemes(newSchemes);
+    try {
+      localStorage.setItem('mahau_active_approvals', JSON.stringify(newApprovals));
+      localStorage.setItem('mahau_active_documents', JSON.stringify(newDocs));
+    } catch (e) {}
+  };
+
+  const handleEntityRegistrationComplete = (updatedProfile: BusinessProfile) => {
+    handleUpdateActiveProfile(updatedProfile);
+    setShowEntityForm(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  // Render Single Window Portal Dashboard or Secondary Views
+  const renderDashboardView = () => {
+    if (showEntityForm) {
+      return (
+        <IndianEntityRegistration
+          initialEmail={activeProfile.email || 'arya2007in@gmail.com'}
+          initialMobile={activeProfile.mobile || '9825204240'}
+          onComplete={handleEntityRegistrationComplete}
+          onCancel={() => setShowEntityForm(false)}
+        />
+      );
+    }
+
+    if (currentView === 'applicant') {
+      return (
+        <MaitriPortalLayout
+          profile={activeProfile}
+          approvals={approvals}
+          documents={documents}
+          schemes={schemes}
+          onUpdateProfile={handleUpdateActiveProfile}
+          onUpdateApprovals={handleUpdateApprovals}
+          onUpdateDocuments={handleUpdateDocuments}
+          onOpenFlowchart={() => setCurrentView('flowchart')}
+          onOpenRegistration={() => setShowEntityForm(true)}
+          onLogout={handleLogout}
+          onSwitchDepartmentView={() => setCurrentView('department')}
+        />
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-teal-100 selection:text-teal-900">
+        {/* Top Universal GovTech Navbar */}
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              
+              {/* Brand & Emblem */}
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/assets/mahau_logo.jpg" 
+                  alt="MahaUdyogSetu" 
+                  className="h-10 w-auto object-contain rounded-lg shadow-2xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-black tracking-tight text-slate-900">
+                      MahaUdyogSetu <span className="text-teal-700 text-sm font-semibold">(महाराष्ट्र उद्योग सेतु)</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                      Govt of Maharashtra
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 hidden sm:block">
+                    Smart Single Window Business Approval, Compliance & Clearance Platform
+                  </p>
+                </div>
+              </div>
+
+              {/* View Navigation Switcher */}
+              <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                <button
+                  onClick={() => setCurrentView('applicant')}
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    (currentView as string) === 'applicant'
+                      ? 'bg-white text-teal-800 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Single Window Portal</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('department')}
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    currentView === 'department'
+                      ? 'bg-white text-teal-800 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Department Scrutiny</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('flowchart')}
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    currentView === 'flowchart'
+                      ? 'bg-white text-teal-800 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <GitBranch className="w-3.5 h-3.5 text-teal-600" />
+                  <span className="hidden md:inline">Clearance Flowchart</span>
+                  <span className="md:hidden">Flow</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentView('briefing')}
+                  className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    currentView === 'briefing'
+                      ? 'bg-white text-teal-800 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-teal-600" />
+                  <span className="hidden md:inline">Architecture Brief</span>
+                  <span className="md:hidden">Brief</span>
+                </button>
+              </nav>
+
+              {/* Active Company, Language Selector & Logout */}
+              <div className="flex items-center gap-2">
+                <LanguageSelector />
+                <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-900 text-xs font-bold">
+                  <UserCheck className="w-3.5 h-3.5 text-teal-700" />
+                  <span>{activeProfile.name.slice(0, 20)}...</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                  title="Log out back to login/registration"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </header>
+
+        {/* Main App Canvas */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {currentView === 'department' && (
+            <DepartmentDashboard
+              approvals={approvals}
+              departmentMetrics={departmentMetrics}
+              activeProfile={activeProfile}
+              onUpdateApprovals={setApprovals}
+              onOpenFlowchart={() => setCurrentView('flowchart')}
+            />
+          )}
+
+          {currentView === 'flowchart' && (
+            <ProcessFlowchartViewer
+              activeProfileName={activeProfile.name}
+            />
+          )}
+
+          {currentView === 'briefing' && (
+            <ExecutiveBriefing
+              onExploreFlowchart={() => setCurrentView('flowchart')}
+              onLaunchApplicantDemo={() => setCurrentView('applicant')}
+              onLaunchDepartmentDemo={() => setCurrentView('department')}
+            />
+          )}
+        </main>
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
-      
-      {/* Top Universal GovTech Navbar */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            
-            {/* Brand & Emblem */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0 font-black text-lg">
-                US
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                    UdyogSetu <span className="text-indigo-600 text-sm font-semibold">(उद्योग सेतु)</span>
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                    SIH Innovation
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 hidden sm:block">
-                  Next-Gen Single Window Business Clearance & Compliance Intelligence
-                </p>
-              </div>
-            </div>
+    <Routes>
+      {/* PUBLIC ROUTES (Accessible without login) */}
+      <Route path="/login" element={<LoginPage initialView="home" />} />
+      <Route path="/register" element={<LoginPage initialView="register" />} />
+      <Route path="/forgot-password" element={<LoginPage initialView="login" />} />
+      <Route path="/otp-verification" element={<LoginPage initialView="register" />} />
 
-            {/* View Navigation Switcher */}
-            <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs font-bold">
-              <button
-                onClick={() => setCurrentView('applicant')}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
-                  currentView === 'applicant'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Applicant Dashboard</span>
-              </button>
+      {/* PROTECTED ROUTES (All require active authentication) */}
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <Navigate to="/services-provided" replace />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Navigate to="/services-provided" replace />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/my-dashboard" 
+        element={
+          <ProtectedRoute>
+            <Navigate to="/services-provided" replace />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/services-provided" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/services" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
 
-              <button
-                onClick={() => setCurrentView('department')}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
-                  currentView === 'department'
-                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Government Portal</span>
-              </button>
+      {/* Main Portal Protected Route */}
+      <Route 
+        path="/main-portal" 
+        element={
+          <ProtectedRoute>
+            <MainPortalPage
+              profile={activeProfile}
+              approvals={approvals}
+              documents={documents}
+              isAuthenticated={isAuthenticated}
+              onLogout={handleLogout}
+            />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/portal" 
+        element={
+          <ProtectedRoute>
+            <Navigate to="/main-portal" replace />
+          </ProtectedRoute>
+        } 
+      />
 
-              <button
-                onClick={() => setCurrentView('flowchart')}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
-                  currentView === 'flowchart'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <GitBranch className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Interactive Flowchart</span>
-                <span className="md:hidden">Flow</span>
-              </button>
+      {/* Grievance & Support Centre Protected Routes */}
+      <Route 
+        path="/grievance" 
+        element={
+          <ProtectedRoute>
+            <GrievanceLandingPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/grievance/register" 
+        element={
+          <ProtectedRoute>
+            <RegisterGrievancePage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/grievance/status" 
+        element={
+          <ProtectedRoute>
+            <CheckStatusPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/grievance/query" 
+        element={
+          <ProtectedRoute>
+            <RegisterQueryPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/query" 
+        element={
+          <ProtectedRoute>
+            <RegisterQueryPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
 
-              <button
-                onClick={() => setCurrentView('briefing')}
-                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
-                  currentView === 'briefing'
-                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Problem & Solutions</span>
-                <span className="md:hidden">Brief</span>
-              </button>
-            </nav>
+      {/* Invest in Maharashtra Protected Routes */}
+      <Route 
+        path="/invest" 
+        element={
+          <ProtectedRoute>
+            <InvestLandingPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/invest/know-your-approvals" 
+        element={
+          <ProtectedRoute>
+            <KnowYourApprovalsPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/invest/incentive-calculator" 
+        element={
+          <ProtectedRoute>
+            <IncentiveCalculatorPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/invest/testing-labs" 
+        element={
+          <ProtectedRoute>
+            <TestingLabsPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/invest/planner" 
+        element={
+          <ProtectedRoute>
+            <InvestmentPlannerPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
 
-            {/* Profile Switcher & Fast Actions */}
-            <div className="flex items-center gap-2">
-              <div className="hidden lg:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-                <span className="text-slate-400">Profile:</span>
-                <select
-                  value={selectedProfileIndex}
-                  onChange={(e) => setSelectedProfileIndex(Number(e.target.value))}
-                  className="bg-transparent font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
-                >
-                  {INITIAL_BUSINESS_PROFILES.map((p: BusinessProfile, i: number) => (
-                    <option key={p.id} value={i} className="dark:bg-slate-900">
-                      {p.name.slice(0, 22)}... ({p.scale})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+      {/* Public Dashboard Protected Routes */}
+      <Route 
+        path="/public-dashboard" 
+        element={
+          <ProtectedRoute>
+            <PublicDashboardPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/public-dashboards" 
+        element={
+          <ProtectedRoute>
+            <PublicDashboardPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/public-dashboard/department/:deptId" 
+        element={
+          <ProtectedRoute>
+            <DepartmentPublicDetailPage />
+          </ProtectedRoute>
+        } 
+      />
 
-          </div>
-        </div>
+      {/* Feedback Protected Route */}
+      <Route 
+        path="/feedback" 
+        element={
+          <ProtectedRoute>
+            <FeedbackPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
 
-        {/* Live System Operational Ticker */}
-        <div className="bg-slate-900 text-slate-300 text-[11px] py-1 px-4 border-t border-slate-800">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>
-                <strong>NSWS v2 Interoperability Layer:</strong> Synchronized with National Single Window System & State Portals
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-slate-400 text-[10px]">
-              <span>AI Regulatory Engine: <strong>Gemini 3.8 Flash Online</strong></span>
-              <span>•</span>
-              <span>DigiLocker Reusable Vault: <strong>Ready</strong></span>
-              <span>•</span>
-              <span>48h Fast-Track Scrutiny: <strong>Active</strong></span>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Services & Approvals Hub Protected Routes */}
+      <Route 
+        path="/apply-verify" 
+        element={
+          <ProtectedRoute>
+            <ApplyVerifyHubPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/apply-for-services" 
+        element={
+          <ProtectedRoute>
+            <ApplyForServicesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/list-of-services" 
+        element={
+          <ProtectedRoute>
+            <ListOfServicesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/service-catalogue" 
+        element={
+          <ProtectedRoute>
+            <ListOfServicesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/verify-permission" 
+        element={
+          <ProtectedRoute>
+            <VerifyPermissionPage />
+          </ProtectedRoute>
+        } 
+      />
 
-      {/* Main App Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {currentView === 'applicant' && (
-          <ApplicantDashboard
-            profile={activeProfile}
-            approvals={approvals}
-            documents={documents}
-            schemes={INCENTIVE_SCHEMES}
-            onUpdateApprovals={setApprovals}
-            onUpdateDocuments={setDocuments}
-            onOpenFlowchart={() => setCurrentView('flowchart')}
-          />
-        )}
+      {/* Fallback Catch-All Route */}
+      <Route 
+        path="*" 
+        element={
+          <ProtectedRoute>
+            <Navigate to="/services-provided" replace />
+          </ProtectedRoute>
+        } 
+      />
+    </Routes>
+  );
+}
 
-        {currentView === 'department' && (
-          <DepartmentDashboard
-            approvals={approvals}
-            departmentMetrics={departmentMetrics}
-            activeProfile={activeProfile}
-            onUpdateApprovals={setApprovals}
-            onOpenFlowchart={() => setCurrentView('flowchart')}
-          />
-        )}
-
-        {currentView === 'flowchart' && (
-          <ProcessFlowchartViewer
-            activeProfileName={activeProfile.name}
-          />
-        )}
-
-        {currentView === 'briefing' && (
-          <ExecutiveBriefing
-            onExploreFlowchart={() => setCurrentView('flowchart')}
-            onLaunchApplicantDemo={() => setCurrentView('applicant')}
-            onLaunchDepartmentDemo={() => setCurrentView('department')}
-          />
-        )}
-      </main>
-
-      {/* Modern GovTech Footer */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 mt-12 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-700 dark:text-slate-300">UdyogSetu</span>
-            <span>— Smart India Hackathon (SIH) Solution</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setCurrentView('briefing')} 
-              className="hover:text-indigo-600 transition-colors"
-            >
-              Problem & 11 Solutions
-            </button>
-            <span>•</span>
-            <button 
-              onClick={() => setCurrentView('flowchart')} 
-              className="hover:text-indigo-600 transition-colors"
-            >
-              Architectural Flowchart
-            </button>
-            <span>•</span>
-            <button 
-              onClick={() => setCurrentView('department')} 
-              className="hover:text-indigo-600 transition-colors"
-            >
-              Government Scrutiny Portal
-            </button>
-          </div>
-          <div className="text-slate-400 text-[11px]">
-            Statutory Compliance: CPCB • NBC 2016 • DISH • State Single Window Clearances Act
-          </div>
-        </div>
-      </footer>
-
-    </div>
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
