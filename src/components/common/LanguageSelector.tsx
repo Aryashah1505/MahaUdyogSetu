@@ -40,7 +40,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   };
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
+    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef} data-no-translate="true">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}

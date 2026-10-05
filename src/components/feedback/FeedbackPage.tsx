@@ -54,7 +54,11 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({ profile }) => {
   const fetchFeedback = async () => {
     setIsLoadingFeedback(true);
     try {
-      const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+      const token = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') || 
+        sessionStorage.getItem('mahau_auth_token') || 
+        localStorage.getItem('mahau_auth_token');
       const response = await fetch('/api/feedback', {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -169,7 +173,11 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({ profile }) => {
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+      const token = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') || 
+        sessionStorage.getItem('mahau_auth_token') || 
+        localStorage.getItem('mahau_auth_token');
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
@@ -268,7 +276,11 @@ export const FeedbackPage: React.FC<FeedbackPageProps> = ({ profile }) => {
     setIsReplying(true);
 
     try {
-      const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+      const token = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') || 
+        sessionStorage.getItem('mahau_auth_token') || 
+        localStorage.getItem('mahau_auth_token');
       const response = await fetch(`/api/feedback/${encodeURIComponent(recordId)}`, {
         method: 'PUT',
         headers: {

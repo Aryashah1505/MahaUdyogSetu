@@ -51,7 +51,11 @@ export const InvestmentPlannerPage: React.FC<InvestmentPlannerPageProps> = ({ pr
   useEffect(() => {
     const loadPlanFromBackend = async () => {
       try {
-        const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+        const token = 
+          sessionStorage.getItem('mahau_session_token') || 
+          localStorage.getItem('mahau_session_token') || 
+          sessionStorage.getItem('mahau_auth_token') || 
+          localStorage.getItem('mahau_auth_token');
         const response = await fetch('/api/invest-plans', {
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -96,7 +100,11 @@ export const InvestmentPlannerPage: React.FC<InvestmentPlannerPageProps> = ({ pr
     } catch (e) {}
 
     try {
-      const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+      const token = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') || 
+        sessionStorage.getItem('mahau_auth_token') || 
+        localStorage.getItem('mahau_auth_token');
       if (activePlanId) {
         await fetch(`/api/invest-plans/${encodeURIComponent(activePlanId)}`, {
           method: 'PUT',

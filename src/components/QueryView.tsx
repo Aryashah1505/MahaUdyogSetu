@@ -70,23 +70,91 @@ export const QueryView: React.FC<QueryViewProps> = ({
     }
   ]);
 
+  // Load live queries from backend API
+  React.useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveQueries() {
+      try {
+        const token = 
+          sessionStorage.getItem('mahau_session_token') || 
+          localStorage.getItem('mahau_session_token') || 
+          sessionStorage.getItem('mahau_auth_token') || 
+          localStorage.getItem('mahau_auth_token');
+        if (!token) return;
+
+        const res = await fetch('/api/grievances', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.grievances && Array.isArray(data.grievances) && data.grievances.length > 0 && isMounted) {
+            const mapped: QueryRecord[] = data.grievances
+              .filter((g: any) => g.type === 'query')
+              .map((g: any) => ({
+                id: g.id,
+                subject: g.subject || 'Clarification on Statutory Requirements',
+                department: g.department || 'Industries Department',
+                serviceRelated: g.serviceRelated || g.service_related || 'Single Window Services',
+                description: g.description || '',
+                dateRaised: new Date(g.createdAt || g.created_at || Date.now()).toLocaleDateString('en-GB'),
+                status: (g.status === 'Resolved' ? 'Answered' : g.status === 'In Progress' ? 'Under Department Review' : 'Submitted') as any,
+                officerResponse: g.resolutionNotes || g.resolution_notes || undefined
+              }));
+            if (mapped.length > 0) {
+              setQueries(prev => [...mapped, ...prev.filter(p => !mapped.some(m => m.id === p.id))]);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Live queries fetch notice:', err);
+      }
+    }
+    fetchLiveQueries();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleRaiseQuery = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !description.trim()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const newQuery: QueryRecord = {
-        id: `QRY-MH-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        subject: subject.trim(),
-        department,
-        serviceRelated,
-        description: description.trim(),
-        attachmentName: attachmentFile ? attachmentFile.name : undefined,
-        dateRaised: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        status: 'Submitted'
-      };
+    const generatedId = `QRY-MH-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newQuery: QueryRecord = {
+      id: generatedId,
+      subject: subject.trim(),
+      department,
+      serviceRelated,
+      description: description.trim(),
+      attachmentName: attachmentFile ? attachmentFile.name : undefined,
+      dateRaised: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      status: 'Submitted'
+    };
 
+    // Post to backend database
+    const token = 
+      sessionStorage.getItem('mahau_session_token') || 
+      localStorage.getItem('mahau_session_token') || 
+      sessionStorage.getItem('mahau_auth_token') || 
+      localStorage.getItem('mahau_auth_token');
+
+    if (token) {
+      fetch('/api/grievances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'query',
+          subject: subject.trim(),
+          department,
+          serviceRelated,
+          description: description.trim()
+        })
+      }).catch(err => console.warn('Submit query notice:', err));
+    }
+
+    setTimeout(() => {
       setQueries([newQuery, ...queries]);
       setIsSubmitting(false);
       setShowRaiseModal(false);

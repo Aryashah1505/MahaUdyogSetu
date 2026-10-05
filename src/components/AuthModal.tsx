@@ -5,7 +5,6 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   ArrowRight, 
-  Sparkles, 
   Phone, 
   Mail, 
   FileText, 
@@ -27,50 +26,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, currentCom
   const [otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Form State initialized for seamless fast test/registration
+  // Form State initialized completely empty (no default credentials)
   const [formData, setFormData] = useState({
-    name: 'Western Maharashtra Engineering Private Limited',
+    name: '',
     businessType: 'Private Limited' as const,
-    cin: 'U28990MH2026PTC654321',
-    pan: 'FGHIJ5678K',
-    gstin: '27FGHIJ5678K1Z8',
-    mobile: '9123456780',
-    email: 'contact@westernmahaengineering.example',
+    cin: '',
+    pan: '',
+    gstin: '',
+    mobile: '',
+    email: '',
     state: 'Maharashtra',
-    district: 'Nashik',
-    address: 'Plot No. 18, Ambad MIDC, Ambad Industrial Estate, Nashik, Maharashtra – 422010',
-    sector: 'Engineering & Heavy Manufacturing',
+    district: '',
+    address: '',
+    sector: '',
     scale: 'Medium' as const,
-    investmentCrores: 18.5,
-    workforce: 75,
-    connectedPowerKw: 350,
+    investmentCrores: '' as any,
+    workforce: '' as any,
+    connectedPowerKw: '' as any,
     handlesHazardous: false,
     landType: 'Industrial Park (Allotted)' as const,
     stage: 'Pre-Establishment' as const,
   });
-
-  const handleQuickFillWesternMaha = () => {
-    setFormData({
-      name: 'Western Maharashtra Engineering Private Limited',
-      businessType: 'Private Limited',
-      cin: 'U28990MH2026PTC654321',
-      pan: 'FGHIJ5678K',
-      gstin: '27FGHIJ5678K1Z8',
-      mobile: '9123456780',
-      email: 'contact@westernmahaengineering.example',
-      state: 'Maharashtra',
-      district: 'Nashik',
-      address: 'Plot No. 18, Ambad MIDC, Ambad Industrial Estate, Nashik, Maharashtra – 422010',
-      sector: 'Engineering & Heavy Manufacturing',
-      scale: 'Medium',
-      investmentCrores: 18.5,
-      workforce: 75,
-      connectedPowerKw: 350,
-      handlesHazardous: false,
-      landType: 'Industrial Park (Allotted)',
-      stage: 'Pre-Establishment',
-    });
-  };
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, currentCom
     setTimeout(() => {
       setIsLoading(false);
       setOtpStep(true);
-      setOtpCode('749201'); // Pre-fill mock OTP for smooth verification
+      setOtpCode('');
     }, 600);
   };
 
@@ -136,16 +112,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, currentCom
               <p className="text-xs text-slate-500">Government of Maharashtra Single Window Business Approval Platform</p>
             </div>
           </div>
-
-          <button
-            onClick={handleQuickFillWesternMaha}
-            type="button"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200 hover:bg-teal-100 transition-all"
-            title="Auto-fill benchmark test enterprise"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-            Fill Western Maharashtra Eng.
-          </button>
         </div>
 
         {/* OTP Screen */}
@@ -174,7 +140,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess, currentCom
                 className="w-full text-center tracking-[0.5em] font-mono text-2xl font-black px-4 py-3 rounded-xl bg-slate-50 border-2 border-teal-600 text-slate-900 focus:outline-none focus:ring-4 focus:ring-teal-500/20"
                 required
               />
-              <p className="text-[11px] text-center text-teal-700 font-medium">Demo OTP auto-filled for immediate testing.</p>
             </div>
 
             <div className="flex gap-3 pt-4">

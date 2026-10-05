@@ -98,7 +98,11 @@ function AppContent() {
   useEffect(() => {
     let isMounted = true;
     async function fetchLiveCompanyData() {
-      const storedToken = sessionStorage.getItem('mahau_session_token');
+      const storedToken = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') ||
+        sessionStorage.getItem('mahau_auth_token') ||
+        localStorage.getItem('mahau_auth_token');
       if (!storedToken) return;
 
       try {
@@ -341,25 +345,20 @@ function AppContent() {
   return (
     <Routes>
       {/* PUBLIC ROUTES (Accessible without login) */}
-      <Route path="/login" element={<LoginPage initialView="home" />} />
+      <Route path="/" element={<LoginPage initialView="home" />} />
+      <Route path="/home" element={<LoginPage initialView="home" />} />
+      <Route path="/landing" element={<LoginPage initialView="home" />} />
+      <Route path="/login" element={<LoginPage initialView="login" />} />
       <Route path="/register" element={<LoginPage initialView="register" />} />
       <Route path="/forgot-password" element={<LoginPage initialView="login" />} />
       <Route path="/otp-verification" element={<LoginPage initialView="register" />} />
 
       {/* PROTECTED ROUTES (All require active authentication) */}
       <Route 
-        path="/" 
-        element={
-          <ProtectedRoute>
-            <Navigate to="/services-provided" replace />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
         path="/dashboard" 
         element={
           <ProtectedRoute>
-            <Navigate to="/services-provided" replace />
+            {renderDashboardView()}
           </ProtectedRoute>
         } 
       />
@@ -367,10 +366,11 @@ function AppContent() {
         path="/my-dashboard" 
         element={
           <ProtectedRoute>
-            <Navigate to="/services-provided" replace />
+            {renderDashboardView()}
           </ProtectedRoute>
         } 
       />
+      {/* Single Window Portal Dashboard & All Integrated Tab/Sidebar Views */}
       <Route 
         path="/services-provided" 
         element={
@@ -387,34 +387,186 @@ function AppContent() {
           </ProtectedRoute>
         } 
       />
-
-      {/* Main Portal Protected Route */}
       <Route 
-        path="/main-portal" 
+        path="/services-applied" 
         element={
           <ProtectedRoute>
-            <MainPortalPage
-              profile={activeProfile}
-              approvals={approvals}
-              documents={documents}
-              isAuthenticated={isAuthenticated}
-              onLogout={handleLogout}
-            />
+            {renderDashboardView()}
           </ProtectedRoute>
         } 
       />
       <Route 
-        path="/portal" 
+        path="/applications" 
         element={
           <ProtectedRoute>
-            <Navigate to="/main-portal" replace />
+            {renderDashboardView()}
           </ProtectedRoute>
         } 
       />
-
-      {/* Grievance & Support Centre Protected Routes */}
+      <Route 
+        path="/caf" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/payment-history" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/intelligence-engine" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/imprisonment-provisions" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/business-profile" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/business-profile/show" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/business-profile/factory-units" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/business-profile/midc-plot" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/investor-wizard" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/investor-wizard/run" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/investor-wizard/applied-list" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/investor-wizard/sectoral-approvals" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/document-repository" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/old-applications" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/firm-registration" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/nsws" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/feedback" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/query" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/grievance" 
+        element={
+          <ProtectedRoute>
+            {renderDashboardView()}
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Standalone Public & Dedicated Support Portals */}
+      <Route 
+        path="/grievance/portal" 
+        element={
+          <ProtectedRoute>
+            <GrievanceLandingPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/grievance-portal" 
         element={
           <ProtectedRoute>
             <GrievanceLandingPage profile={activeProfile} />
@@ -446,10 +598,18 @@ function AppContent() {
         } 
       />
       <Route 
-        path="/query" 
+        path="/feedback/hub" 
         element={
           <ProtectedRoute>
-            <RegisterQueryPage profile={activeProfile} />
+            <FeedbackPage profile={activeProfile} />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/feedback-center" 
+        element={
+          <ProtectedRoute>
+            <FeedbackPage profile={activeProfile} />
           </ProtectedRoute>
         } 
       />

@@ -25,6 +25,7 @@ import { FirmRegistrationView } from './FirmRegistrationView';
 import { NswsView } from './NswsView';
 import { IntelligenceEngineView } from './IntelligenceEngineView';
 import { ApplyVerifyPermissionView } from './ApplyVerifyPermissionView';
+import { MahaUdyogDashboardView } from './dashboard/MahaUdyogDashboardView';
 import { 
   LayoutDashboard, 
   Home,
@@ -56,6 +57,7 @@ import {
   Download,
   IndianRupee,
   CreditCard,
+  Menu,
   X,
   FileCheck2,
   CheckCircle,
@@ -387,19 +389,22 @@ export const MaitriPortalLayout: React.FC<MaitriPortalLayoutProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
 
   // Map route pathname to sidebar nav id
   const getNavFromPath = (pathname: string): string => {
     switch (pathname) {
       case '/':
       case '/dashboard':
+      case '/my-dashboard':
+        return 'dashboard';
       case '/apply-verify':
       case '/apply-and-verify':
         return 'apply_verify';
       case '/services-provided':
         return 'services_provided';
       case '/applications':
+      case '/services-applied':
         return 'applications';
       case '/imprisonment-provisions':
         return 'imprisonment_provisions';
@@ -438,13 +443,15 @@ export const MaitriPortalLayout: React.FC<MaitriPortalLayoutProps> = ({
       case '/payment-history':
         return 'payment_history';
       default:
-        return 'services_provided';
+        return 'dashboard';
     }
   };
 
   // Map sidebar nav id to route path
   const getPathFromNav = (nav: string): string => {
     switch (nav) {
+      case 'dashboard':
+        return '/dashboard';
       case 'apply_verify':
         return '/apply-verify';
       case 'services_provided':
@@ -492,6 +499,7 @@ export const MaitriPortalLayout: React.FC<MaitriPortalLayoutProps> = ({
 
   // Left Sidebar active menu synced with URL pathname
   const [selectedNav, setSelectedNav] = useState<string>(() => getNavFromPath(location.pathname));
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Expandable Sidebar Dropdowns ('business_profile' | 'investor_wizard' | null)
   const [openDropdown, setOpenDropdown] = useState<'business_profile' | 'investor_wizard' | null>(() => {
@@ -500,12 +508,13 @@ export const MaitriPortalLayout: React.FC<MaitriPortalLayoutProps> = ({
     return null;
   });
 
-  // Top Tabs: 'services_applied' | 'services_available' | 'caf' | 'payment_history'
-  const [activeTopTab, setActiveTopTab] = useState<'services_applied' | 'services_available' | 'caf' | 'payment_history'>(() => {
-    if (location.pathname === '/applications') return 'services_applied';
+  // Top Tabs: 'dashboard' | 'services_applied' | 'services_available' | 'caf' | 'payment_history'
+  const [activeTopTab, setActiveTopTab] = useState<'dashboard' | 'services_applied' | 'services_available' | 'caf' | 'payment_history'>(() => {
+    if (location.pathname === '/applications' || location.pathname === '/services-applied') return 'services_applied';
+    if (location.pathname === '/services-provided') return 'services_available';
     if (location.pathname === '/caf') return 'caf';
     if (location.pathname === '/payment-history') return 'payment_history';
-    return 'services_available';
+    return 'dashboard';
   });
 
   // Sync state when URL pathname changes (e.g. back/forward or direct load)
@@ -517,31 +526,39 @@ export const MaitriPortalLayout: React.FC<MaitriPortalLayoutProps> = ({
     } else if (location.pathname.startsWith('/investor-wizard')) {
       setOpenDropdown('investor_wizard');
     }
-    if (location.pathname === '/applications') {
+    if (location.pathname === '/applications' || location.pathname === '/services-applied') {
       setActiveTopTab('services_applied');
-    } else if (location.pathname === '/services-provided' || location.pathname === '/' || location.pathname === '/dashboard') {
+    } else if (location.pathname === '/services-provided') {
       setActiveTopTab('services_available');
     } else if (location.pathname === '/caf') {
       setActiveTopTab('caf');
     } else if (location.pathname === '/payment-history') {
       setActiveTopTab('payment_history');
+    } else if (location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/my-dashboard') {
+      setActiveTopTab('dashboard');
     }
   }, [location.pathname]);
 
   // Navigate helper
-  const handleNavClick = (nav: string, tab?: 'services_applied' | 'services_available' | 'caf' | 'payment_history') => {
+  const handleNavClick = (nav: string, tab?: 'dashboard' | 'services_applied' | 'services_available' | 'caf' | 'payment_history') => {
     setSelectedNav(nav);
+    setMobileSidebarOpen(false);
     if (tab) {
       setActiveTopTab(tab);
+    } else if (nav === 'dashboard') {
+      setActiveTopTab('dashboard');
     }
     const path = getPathFromNav(nav);
     navigate(path);
   };
 
   // Top tab click helper
-  const handleTopTabClick = (tab: 'services_applied' | 'services_available' | 'caf' | 'payment_history') => {
+  const handleTopTabClick = (tab: 'dashboard' | 'services_applied' | 'services_available' | 'caf' | 'payment_history') => {
     setActiveTopTab(tab);
-    if (tab === 'services_applied') {
+    if (tab === 'dashboard') {
+      setSelectedNav('dashboard');
+      navigate('/dashboard');
+    } else if (tab === 'services_applied') {
       setSelectedNav('applications');
       navigate('/applications');
     } else if (tab === 'services_available') {
@@ -704,12 +721,26 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
   }).filter(dept => searchQuery.trim() === '' || dept.hasMatch);
 
   return (
-    <div className="min-h-screen bg-[#eaedf2] flex flex-col font-sans text-slate-800 antialiased selection:bg-blue-100">
+    <div 
+      className="min-h-screen flex flex-col font-sans text-slate-800 antialiased selection:bg-blue-100 relative bg-cover bg-center bg-fixed"
+      style={{
+        backgroundImage: "url('/assets/maha_industry_bridge.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Subtle translucent dark layer so the background image remains visible behind the UI with optimal readability */}
+      <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-[1px] pointer-events-none z-0" />
+      <div className="relative z-10 flex flex-col min-h-screen">
       
       {/* 1. TOP ACCESS BAR */}
-      <div className="bg-[#0b1b3d] text-white text-[11px] px-4 sm:px-8 py-1 flex items-center justify-between border-b border-slate-700/60">
+      <div className="bg-[#0b1b3d]/90 backdrop-blur-md text-white text-[11px] px-4 sm:px-8 py-1.5 flex items-center justify-between border-b border-slate-700/60 sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <span className="opacity-90">Government of Maharashtra • Single Window Clearance System</span>
+          <span className="opacity-95 font-semibold flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Government of Maharashtra • Single Window Clearance System
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSelector variant="dark" />
@@ -719,27 +750,42 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
           >
             <span>🌐 Go to Main Portal</span>
           </button>
-          <span className="text-slate-300 font-mono hidden sm:inline">MahaUdyogSetu • MAITRI Integrated</span>
-          {onSwitchDepartmentView && (
-            <button 
-              onClick={onSwitchDepartmentView}
-              className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded font-bold transition-all"
-            >
-              Officer Portal
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row p-3 gap-3 max-w-[1720px] w-full mx-auto">
+      <div className="flex-1 flex flex-col lg:flex-row p-2.5 sm:p-3 gap-3 max-w-[1720px] w-full mx-auto">
         
+        {/* Mobile Navigation Bar (Toggles 15-button sidebar on phone/tablet) */}
+        <div className="lg:hidden flex items-center justify-between p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200 shadow-md">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+              MU
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-900 truncate">
+                {selectedNav === 'dashboard' ? 'Dashboard Overview' : selectedNav.replace(/_/g, ' ').toUpperCase()}
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">MahaUdyogSetu • Single Window</div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer min-h-[38px]"
+          >
+            {mobileSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            <span>{mobileSidebarOpen ? 'Hide Menu' : 'Menu & Services'}</span>
+          </button>
+        </div>
+
         {/* =========================================================================
             LEFT SIDEBAR NAVIGATION
            ========================================================================= */}
-        <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-2">
+        <aside className={`w-full lg:w-72 shrink-0 ${mobileSidebarOpen ? 'flex' : 'hidden lg:flex'} flex-col gap-2`}>
           
           {/* Official MahaUdyogSetu Emblem Box */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs flex flex-col items-center justify-center text-center">
+          <div className="bg-white/92 backdrop-blur-md rounded-2xl border border-white/80 p-3.5 shadow-lg shadow-slate-950/5 flex flex-col items-center justify-center text-center">
             <img 
               src="/assets/mahau_logo.jpg" 
               alt="MahaUdyogSetu - Maharashtra Industry Bridge" 
@@ -748,15 +794,15 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
           </div>
 
           {/* Nav Buttons List */}
-          <div className="bg-white rounded-xl border border-slate-300/80 p-2 shadow-xs flex flex-col gap-1.5 text-xs font-semibold">
+          <div className="bg-white/92 backdrop-blur-md rounded-xl border border-white/80 p-2 shadow-lg shadow-slate-950/5 flex flex-col gap-1.5 text-xs font-semibold">
             
             {/* 0. Dashboard / Home */}
             <button
-              onClick={() => handleNavClick('services_provided', 'services_available')}
+              onClick={() => handleNavClick('dashboard')}
               className={`w-full py-2.5 px-3.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer ${
-                (selectedNav === 'services_provided' && activeTopTab === 'services_available') || location.pathname === '/' || location.pathname === '/dashboard'
+                selectedNav === 'dashboard'
                   ? 'bg-blue-600 text-white border-blue-700 shadow-xs font-bold'
-                  : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200'
+                  : 'bg-white/80 hover:bg-white text-slate-800 border-slate-200'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -1142,57 +1188,74 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
            ========================================================================= */}
         <main className="flex-1 flex flex-col gap-3 min-w-0">
           
-          {/* Top 4 Tabs Navigation Bar (Shown on Dashboard & Application / Services tabs) */}
-          {(selectedNav === 'services_provided' || selectedNav === 'applications' || selectedNav === 'caf' || selectedNav === 'payment_history') && (
-            <div className="bg-white rounded-xl border border-slate-300/80 p-1.5 shadow-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold text-center">
+          {/* Top 5 Tabs Navigation Bar (Shown on Dashboard & Application / Services tabs) */}
+          {(selectedNav === 'dashboard' || selectedNav === 'services_provided' || selectedNav === 'applications' || selectedNav === 'caf' || selectedNav === 'payment_history') && (
+            <div className="bg-white/92 backdrop-blur-md rounded-2xl border border-white/80 p-1.5 shadow-md shadow-slate-950/5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs font-bold text-center">
                 
+                {/* Tab 0: Dashboard Workspace */}
+                <button
+                  onClick={() => handleTopTabClick('dashboard')}
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeTopTab === 'dashboard' && selectedNav === 'dashboard'
+                      ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                      : 'text-slate-700 hover:bg-white/80'
+                  }`}
+                >
+                  <Home className="w-3.5 h-3.5" />
+                  <span>Dashboard</span>
+                </button>
+
                 {/* Tab 1: Services Applied */}
                 <button
                   onClick={() => handleTopTabClick('services_applied')}
-                  className={`py-2.5 px-3 rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     activeTopTab === 'services_applied' && selectedNav === 'applications'
-                      ? 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-900 border border-slate-300 shadow-xs font-extrabold'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                      : 'text-slate-700 hover:bg-white/80'
                   }`}
                 >
-                  {t('tab.servicesApplied', 'Services Applied')} ({approvals.length})
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>{t('tab.servicesApplied', 'Applications')} ({approvals.length})</span>
                 </button>
 
-                {/* Tab 2: Services Available (Active by default) */}
+                {/* Tab 2: Services Available */}
                 <button
                   onClick={() => handleTopTabClick('services_available')}
-                  className={`py-2.5 px-3 rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     activeTopTab === 'services_available' && selectedNav === 'services_provided'
-                      ? 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-900 border border-slate-300 shadow-xs font-extrabold'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                      : 'text-slate-700 hover:bg-white/80'
                   }`}
                 >
-                  {t('tab.servicesAvailable', 'Services Available')}
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>{t('tab.servicesAvailable', 'Services Directory')}</span>
                 </button>
 
                 {/* Tab 3: CAF (Common Application Form) */}
                 <button
                   onClick={() => handleTopTabClick('caf')}
-                  className={`py-2.5 px-3 rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     activeTopTab === 'caf' || selectedNav === 'caf'
-                      ? 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-900 border border-slate-300 shadow-xs font-extrabold'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                      : 'text-slate-700 hover:bg-white/80'
                   }`}
                 >
-                  {t('tab.caf', 'CAF (Common Application Form)')}
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{t('tab.caf', 'Common Form (CAF)')}</span>
                 </button>
 
                 {/* Tab 4: Payment History */}
                 <button
                   onClick={() => handleTopTabClick('payment_history')}
-                  className={`py-2.5 px-3 rounded-lg transition-all cursor-pointer ${
+                  className={`py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     activeTopTab === 'payment_history' || selectedNav === 'payment_history'
-                      ? 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-900 border border-slate-300 shadow-xs font-extrabold'
-                      : 'text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                      : 'text-slate-700 hover:bg-white/80'
                   }`}
                 >
-                  {t('tab.paymentHistory', 'Payment History')}
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>{t('tab.paymentHistory', 'Payment History')}</span>
                 </button>
 
               </div>
@@ -1201,13 +1264,36 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
 
           {/* Feedback notification toast if service clicked */}
           {appliedServiceMessage && (
-            <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between shadow-xs animate-fadeIn">
+            <div className="bg-emerald-50/95 backdrop-blur-md border border-emerald-300 text-emerald-900 px-4 py-3 rounded-xl text-xs font-bold flex items-center justify-between shadow-xs animate-fadeIn">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>{appliedServiceMessage}</span>
               </div>
               <button onClick={() => setAppliedServiceMessage(null)} className="text-emerald-700 hover:text-emerald-900 font-black">✕</button>
             </div>
+          )}
+
+          {/* =========================================================================
+              ROUTE VIEW 0: MAHAUDYOGSETU WORKSPACE DASHBOARD
+             ========================================================================= */}
+          {selectedNav === 'dashboard' && (
+            <MahaUdyogDashboardView
+              profile={profile}
+              approvals={approvals}
+              documents={documents}
+              schemes={schemes}
+              onNavigateTab={handleNavClick}
+              onOpenServiceReadiness={handleOpenServiceReadiness}
+              onOpenApplicationDetails={(app) => {
+                handleNavClick('applications', 'services_applied');
+                setSelectedAppForDetails(app);
+                setModalActiveTab('timeline');
+              }}
+              onDownloadReceipt={handleDownloadAppReceipt}
+              onDownloadDossier={handleDownloadFullDossier}
+              onOpenRegistration={onOpenRegistration}
+              onUpdateApprovals={onUpdateApprovals}
+            />
           )}
 
           {/* =========================================================================
@@ -1588,60 +1674,204 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
           {/* =========================================================================
               ROUTE VIEW 3: CAF (Common Application Form)
              ========================================================================= */}
+          {/* =========================================================================
+              ROUTE VIEW 3: CAF (Common Application Form)
+             ========================================================================= */}
           {selectedNav === 'caf' && (
-            <div className="bg-white rounded-xl border border-slate-300/80 p-5 shadow-xs space-y-4">
-              <div className="border-b border-slate-200 pb-3">
-                <h2 className="text-base font-bold text-slate-900">Unified Common Application Form (CAF)</h2>
-                <p className="text-xs text-slate-500">One-time single window submission data powering all departmental clearances</p>
+            <div className="bg-white rounded-xl border border-slate-300/80 p-5 shadow-xs space-y-5 animate-fadeIn">
+              <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900">Unified Common Application Form (CAF)</h2>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      <span>Single Window Verified</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Central statutory master dataset powering all Departmental clearances (MPCB, DISH, MSEDCL, Labour, MIDC) under Maharashtra Single Window Act
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Print / Export CAF</span>
+                  </button>
+
+                  <button
+                    onClick={onOpenRegistration}
+                    className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Edit Common Application Form</span>
+                  </button>
+                </div>
               </div>
 
+              {/* 4 Key Pillars of the CAF */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-blue-600" />
-                    <span>Enterprise Particulars</span>
+                
+                {/* 1. Legal Entity & Incorporation */}
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>1. Enterprise Legal Identity</span>
                   </h3>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                    <div><span className="text-slate-500">Legal Entity:</span> <strong className="block text-slate-800">{profile.name}</strong></div>
-                    <div><span className="text-slate-500">Constitution:</span> <strong className="block text-slate-800">{profile.businessType || 'Private Limited'}</strong></div>
-                    <div><span className="text-slate-500">PAN:</span> <strong className="block text-slate-800 font-mono">{profile.pan}</strong></div>
-                    <div><span className="text-slate-500">CIN:</span> <strong className="block text-slate-800 font-mono">{profile.cin || 'U28990MH2026PTC654321'}</strong></div>
+                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                    <div>
+                      <span className="text-slate-500 block">Legal Entity Name</span>
+                      <strong className="text-slate-900">{profile.name}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Constitution of Firm</span>
+                      <strong className="text-slate-900">{profile.businessType || 'Private Limited'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Corporate PAN</span>
+                      <strong className="text-slate-900 font-mono">{profile.pan}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">CIN Number</span>
+                      <strong className="text-slate-900 font-mono">{profile.cin || 'U28990MH2026PTC654321'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">GSTIN</span>
+                      <strong className="text-slate-900 font-mono">{profile.gstin || '27FGHIJ5678K1Z8'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Udyam Registration</span>
+                      <strong className="text-slate-900 font-mono">{profile.udyamRegistration || 'UDYAM-MH-26-0081294'}</strong>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                  <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-blue-600" />
-                    <span>Industrial Parameters</span>
+                {/* 2. Industrial Scope & Scale */}
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Briefcase className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>2. Industrial Scope & Proposed Scale</span>
                   </h3>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                    <div><span className="text-slate-500">Sector:</span> <strong className="block text-slate-800">{profile.sector}</strong></div>
-                    <div><span className="text-slate-500">Proposed Investment:</span> <strong className="block text-slate-800">₹ {profile.investmentCrores} Cr ({profile.scale})</strong></div>
-                    <div><span className="text-slate-500">Workforce / Employment:</span> <strong className="block text-slate-800">{profile.workforce} Employees</strong></div>
-                    <div><span className="text-slate-500">Connected Power:</span> <strong className="block text-slate-800">{profile.connectedPowerKw} kW</strong></div>
+                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                    <div>
+                      <span className="text-slate-500 block">Primary Sector</span>
+                      <strong className="text-slate-900">{profile.sector}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Investment in Plant & Machinery</span>
+                      <strong className="text-slate-900">₹ {profile.investmentCrores} Crores ({profile.scale})</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Total Proposed Workforce</span>
+                      <strong className="text-slate-900">{profile.workforce} Regular Employees</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Sanctioned Connected Power</span>
+                      <strong className="text-slate-900">{profile.connectedPowerKw} kW (HT Load)</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Project Stage</span>
+                      <strong className="text-slate-900">{profile.stage || 'Pre-Establishment'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Profile Completion Status</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>100% Statutory Ready</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={onOpenRegistration}
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
-                >
-                  Edit Common Application Form (CAF)
-                </button>
+                {/* 3. Geographic Location & Land */}
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Home className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>3. Location & Plot Infrastructure</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                    <div>
+                      <span className="text-slate-500 block">Revenue District</span>
+                      <strong className="text-slate-900">{profile.district || 'Nashik'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Taluka / Sub-Division</span>
+                      <strong className="text-slate-900">{profile.taluka || 'Ambad'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Industrial Area Type</span>
+                      <strong className="text-slate-900">{profile.isMIDC ? 'MIDC Industrial Estate' : 'Non-MIDC Zone'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Postal Pincode</span>
+                      <strong className="text-slate-900 font-mono">{profile.pincode || '422010'}</strong>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-500 block">Full Registered Site Address</span>
+                      <strong className="text-slate-900">{profile.address || 'Plot No. 18, Ambad MIDC, Ambad Industrial Estate, Nashik, Maharashtra – 422010'}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Environmental & Utility Parameters */}
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200 space-y-3">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <Zap className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>4. Utilities & Environmental Scope</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2.5 text-[11px]">
+                    <div>
+                      <span className="text-slate-500 block">Hazardous Substances Handling</span>
+                      <strong className="text-slate-900">{profile.handlesHazardous ? 'Yes (Hazardous)' : 'No (Non-Hazardous)'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Industrial Boiler Installation</span>
+                      <strong className="text-slate-900">{profile.hasBoiler ? 'Yes (Boiler Included)' : 'No Boiler'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Water Extraction Requirement</span>
+                      <strong className="text-slate-900">{profile.waterExtractionRequirementKld || 0} KLD</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">DG Set Standby Capacity</span>
+                      <strong className="text-slate-900">{profile.dgSetKva || 250} kVA</strong>
+                    </div>
+                    <div className="col-span-2 bg-blue-50 border border-blue-200 p-2 rounded-lg text-[10px] text-blue-900 font-medium">
+                      ℹ️ Common Application Form (CAF) synchronizes auto-generated application dossiers with 14 statutory departments without manual re-typing.
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
 
           {/* =========================================================================
-              ROUTE VIEW 4: PAYMENT HISTORY
+              ROUTE VIEW 4: PAYMENT HISTORY (/payment-history)
              ========================================================================= */}
           {selectedNav === 'payment_history' && (
-            <div className="bg-white rounded-xl border border-slate-300/80 p-5 shadow-xs space-y-4">
-              <div className="border-b border-slate-200 pb-3">
-                <h2 className="text-base font-bold text-slate-900">Statutory Fee Payment Gateway Receipts (GRAS)</h2>
-                <p className="text-xs text-slate-500">Official Government Receipt Accounting System (GRAS Maharashtra) transaction ledger</p>
+            <div className="bg-white rounded-xl border border-slate-300/80 p-5 shadow-xs space-y-4 animate-fadeIn">
+              <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                      Statutory Fee Payment Gateway Receipts (GRAS)
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                      e-Challan Treasury Verified
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Official Government Receipt Accounting System (GRAS Maharashtra) transaction ledger & statutory receipts
+                  </p>
+                </div>
+
+                <div className="text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 font-medium">
+                  Verified GRAS Merchant Code: <strong className="font-mono text-slate-900">MH-GOV-IND-2026</strong>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -1652,26 +1882,192 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
                       <th className="py-2.5 px-3">Department & Service</th>
                       <th className="py-2.5 px-3">Date</th>
                       <th className="py-2.5 px-3">Amount</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3">Receipt</th>
+                      <th className="py-2.5 px-3">Payment Status</th>
+                      <th className="py-2.5 px-3 text-right">Official Receipt</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
+                    {/* Live approvals from backend merged with GRAS ledger records */}
+                    {approvals
+                      .filter(a => (a.feeAmount && a.feeAmount > 0) || (a.paymentStatus && a.paymentStatus.toLowerCase().includes('paid')))
+                      .map((app) => (
+                        <tr key={app.id} className="hover:bg-slate-50/90 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900">
+                            {app.transactionId || `MH-GRAS-2026-${(app.id || '').replace(/\D/g, '').slice(-4) || '8124'}`}
+                          </td>
+                          <td className="py-3 px-3 max-w-xs">
+                            <div className="font-bold text-slate-900">{app.department}</div>
+                            <div className="text-[11px] text-slate-500 truncate">{app.name}</div>
+                          </td>
+                          <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                            {app.appliedDate || app.submittedDate || '26 Mar 2026'}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">
+                            ₹ {Number(app.feeAmount || 15000).toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              SUCCESS
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                const grn = app.transactionId || `MH-GRAS-2026-${(app.id || '').replace(/\D/g, '').slice(-4) || '8124'}`;
+                                const printWindow = window.open('', '_blank');
+                                if (printWindow) {
+                                  printWindow.document.write(`
+                                    <html>
+                                      <head>
+                                        <title>GRAS Payment Challan Receipt - ${grn}</title>
+                                        <style>
+                                          body { font-family: system-ui, sans-serif; padding: 24px; color: #1e293b; max-width: 650px; margin: 0 auto; }
+                                          .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+                                          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+                                          .stamp { margin-top: 24px; text-align: right; font-weight: bold; color: #047857; }
+                                        </style>
+                                      </head>
+                                      <body>
+                                        <div class="header">
+                                          <h2>Government of Maharashtra</h2>
+                                          <h3>Government Receipt Accounting System (GRAS) - Payment Challan</h3>
+                                        </div>
+                                        <div class="row"><span>GRN:</span><strong>${grn}</strong></div>
+                                        <div class="row"><span>Department:</span><strong>${app.department}</strong></div>
+                                        <div class="row"><span>Service:</span><strong>${app.name}</strong></div>
+                                        <div class="row"><span>Enterprise:</span><strong>${profile.name}</strong></div>
+                                        <div class="row"><span>Amount Paid:</span><strong>₹ ${Number(app.feeAmount || 15000).toLocaleString('en-IN')}</strong></div>
+                                        <div class="row"><span>Date:</span><strong>${app.appliedDate || app.submittedDate || '26 Mar 2026'}</strong></div>
+                                        <div class="row"><span>Payment Status:</span><strong style="color: #059669;">SUCCESS (VERIFIED)</strong></div>
+                                        <div class="stamp">✓ Digitally Signed & Treasury Reconciled</div>
+                                      </body>
+                                    </html>
+                                  `);
+                                  printWindow.document.close();
+                                  printWindow.focus();
+                                  setTimeout(() => printWindow.print(), 300);
+                                }
+                              }}
+                              className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition-colors cursor-pointer"
+                            >
+                              Challan PDF
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                    {/* Benchmark statutory payment records */}
                     <tr className="hover:bg-slate-50">
                       <td className="py-3 px-3 font-mono font-bold text-slate-900">MH-GRAS-2026-9812</td>
-                      <td className="py-3 px-3">Maharashtra Pollution Control Board (CTE)</td>
-                      <td className="py-3 px-3 text-slate-600">20 Mar 2026</td>
-                      <td className="py-3 px-3 font-bold text-slate-900">₹ 25,000</td>
-                      <td className="py-3 px-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">SUCCESS</span></td>
-                      <td className="py-3 px-3"><button onClick={() => alert("Downloading GRAS Challan PDF...")} className="text-blue-600 hover:underline font-bold">Challan PDF</button></td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-slate-900">Maharashtra Pollution Control Board</div>
+                        <div className="text-[11px] text-slate-500">Consent to Establish (CTE) - Orange Category</div>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap">20 Mar 2026</td>
+                      <td className="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">₹ 25,000</td>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          SUCCESS
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <button 
+                          onClick={() => {
+                            const printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                              printWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>GRAS Payment Challan Receipt - MH-GRAS-2026-9812</title>
+                                    <style>
+                                      body { font-family: system-ui, sans-serif; padding: 24px; color: #1e293b; max-width: 650px; margin: 0 auto; }
+                                      .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+                                      .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+                                      .stamp { margin-top: 24px; text-align: right; font-weight: bold; color: #047857; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="header">
+                                      <h2>Government of Maharashtra</h2>
+                                      <h3>Government Receipt Accounting System (GRAS) - Payment Challan</h3>
+                                    </div>
+                                    <div class="row"><span>GRN:</span><strong>MH-GRAS-2026-9812</strong></div>
+                                    <div class="row"><span>Department:</span><strong>Maharashtra Pollution Control Board</strong></div>
+                                    <div class="row"><span>Service:</span><strong>Consent to Establish (CTE)</strong></div>
+                                    <div class="row"><span>Enterprise:</span><strong>${profile.name}</strong></div>
+                                    <div class="row"><span>Amount Paid:</span><strong>₹ 25,000</strong></div>
+                                    <div class="row"><span>Date:</span><strong>20 Mar 2026</strong></div>
+                                    <div class="row"><span>Payment Status:</span><strong style="color: #059669;">SUCCESS (VERIFIED)</strong></div>
+                                    <div class="stamp">✓ Digitally Signed & Treasury Reconciled</div>
+                                  </body>
+                                </html>
+                              `);
+                              printWindow.document.close();
+                              printWindow.focus();
+                              setTimeout(() => printWindow.print(), 300);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition-colors cursor-pointer"
+                        >
+                          Challan PDF
+                        </button>
+                      </td>
                     </tr>
                     <tr className="hover:bg-slate-50">
                       <td className="py-3 px-3 font-mono font-bold text-slate-900">MH-GRAS-2026-4410</td>
-                      <td className="py-3 px-3">MSEDCL Power Load Sanction (350 kW)</td>
-                      <td className="py-3 px-3 text-slate-600">19 Mar 2026</td>
-                      <td className="py-3 px-3 font-bold text-slate-900">₹ 35,000</td>
-                      <td className="py-3 px-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">SUCCESS</span></td>
-                      <td className="py-3 px-3"><button onClick={() => alert("Downloading GRAS Challan PDF...")} className="text-blue-600 hover:underline font-bold">Challan PDF</button></td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-slate-900">MSEDCL Power Distribution</div>
+                        <div className="text-[11px] text-slate-500">Power Load Sanction (350 kW HT Load)</div>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 whitespace-nowrap">19 Mar 2026</td>
+                      <td className="py-3 px-3 font-bold text-slate-900 whitespace-nowrap">₹ 35,000</td>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          SUCCESS
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <button 
+                          onClick={() => {
+                            const printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                              printWindow.document.write(`
+                                <html>
+                                  <head>
+                                    <title>GRAS Payment Challan Receipt - MH-GRAS-2026-4410</title>
+                                    <style>
+                                      body { font-family: system-ui, sans-serif; padding: 24px; color: #1e293b; max-width: 650px; margin: 0 auto; }
+                                      .header { border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+                                      .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+                                      .stamp { margin-top: 24px; text-align: right; font-weight: bold; color: #047857; }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="header">
+                                      <h2>Government of Maharashtra</h2>
+                                      <h3>Government Receipt Accounting System (GRAS) - Payment Challan</h3>
+                                    </div>
+                                    <div class="row"><span>GRN:</span><strong>MH-GRAS-2026-4410</strong></div>
+                                    <div class="row"><span>Department:</span><strong>MSEDCL Power Distribution</strong></div>
+                                    <div class="row"><span>Service:</span><strong>Power Load Sanction (350 kW)</strong></div>
+                                    <div class="row"><span>Enterprise:</span><strong>${profile.name}</strong></div>
+                                    <div class="row"><span>Amount Paid:</span><strong>₹ 35,000</strong></div>
+                                    <div class="row"><span>Date:</span><strong>19 Mar 2026</strong></div>
+                                    <div class="row"><span>Payment Status:</span><strong style="color: #059669;">SUCCESS (VERIFIED)</strong></div>
+                                    <div class="stamp">✓ Digitally Signed & Treasury Reconciled</div>
+                                  </body>
+                                </html>
+                              `);
+                              printWindow.document.close();
+                              printWindow.focus();
+                              setTimeout(() => printWindow.print(), 300);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs border border-blue-200 transition-colors cursor-pointer"
+                        >
+                          Challan PDF
+                        </button>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -2305,13 +2701,14 @@ Digitally Generated via MahaUdyogSetu GovTech Platform
       )}
 
       {/* Modern Compact Footer */}
-      <footer className="bg-white border-t border-slate-200 py-3 px-6 text-[11px] text-slate-500 mt-auto">
+      <footer className="bg-white/90 backdrop-blur-md border-t border-slate-200/80 py-3 px-6 text-[11px] text-slate-600 mt-auto">
         <div className="max-w-[1720px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Copyrights © 2026, MAITRI • MahaUdyogSetu. Department of Industries, Government of Maharashtra.</span>
           <span>Technical Support: 1800-120-8040 | maitri-support@maharashtra.gov.in</span>
         </div>
       </footer>
 
+      </div>
     </div>
   );
 };

@@ -29,9 +29,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     async function hydrateAuth() {
       try {
-        const storedAuth = sessionStorage.getItem(AUTH_STORAGE_KEY);
-        const storedToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
-        const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        const storedAuth = sessionStorage.getItem(AUTH_STORAGE_KEY) || localStorage.getItem(AUTH_STORAGE_KEY);
+        const storedToken = 
+          sessionStorage.getItem(TOKEN_STORAGE_KEY) || 
+          localStorage.getItem(TOKEN_STORAGE_KEY) ||
+          sessionStorage.getItem('mahau_auth_token') ||
+          localStorage.getItem('mahau_auth_token');
+        const storedProfile = localStorage.getItem(PROFILE_STORAGE_KEY) || sessionStorage.getItem(PROFILE_STORAGE_KEY);
 
         if (storedProfile) {
           try {
@@ -84,8 +88,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     try {
       sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      localStorage.setItem(AUTH_STORAGE_KEY, 'true');
       if (sessionToken) {
         sessionStorage.setItem(TOKEN_STORAGE_KEY, sessionToken);
+        localStorage.setItem(TOKEN_STORAGE_KEY, sessionToken);
+        sessionStorage.setItem('mahau_auth_token', sessionToken);
+        localStorage.setItem('mahau_auth_token', sessionToken);
       }
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
     } catch (err) {
@@ -98,8 +106,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     try {
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      sessionStorage.removeItem('mahau_auth_token');
+      localStorage.removeItem('mahau_auth_token');
       sessionStorage.removeItem(REDIRECT_STORAGE_KEY);
+      localStorage.removeItem(REDIRECT_STORAGE_KEY);
     } catch (err) {
       console.error('Error clearing auth session:', err);
     }
@@ -109,7 +122,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setActiveProfile(newProfile);
     try {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(newProfile));
-      const currentToken = token || sessionStorage.getItem(TOKEN_STORAGE_KEY);
+      const currentToken = 
+        token || 
+        sessionStorage.getItem(TOKEN_STORAGE_KEY) || 
+        localStorage.getItem(TOKEN_STORAGE_KEY) ||
+        sessionStorage.getItem('mahau_auth_token') ||
+        localStorage.getItem('mahau_auth_token');
       if (currentToken) {
         await fetch('/api/company/profile', {
           method: 'PUT',

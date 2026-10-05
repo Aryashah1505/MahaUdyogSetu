@@ -129,7 +129,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 tag === 'code' ||
                 tag === 'pre' ||
                 tag === 'noscript' ||
-                parent.hasAttribute('data-no-translate')
+                parent.hasAttribute('data-no-translate') ||
+                Boolean(parent.closest && parent.closest('[data-no-translate]'))
               ) {
                 return NodeFilter.FILTER_REJECT;
               }
@@ -151,7 +152,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
         nodesToTranslate.forEach((node) => {
           const anyNode = node as any;
-          if (!anyNode.__originalText) {
+          if (
+            !anyNode.__originalText || 
+            (anyNode.__lastTranslatedText && node.textContent !== anyNode.__lastTranslatedText && node.textContent !== anyNode.__originalText)
+          ) {
             anyNode.__originalText = node.textContent || '';
           }
 
@@ -159,12 +163,14 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             if (node.textContent !== anyNode.__originalText) {
               node.textContent = anyNode.__originalText;
             }
+            anyNode.__lastTranslatedText = anyNode.__originalText;
           } else {
             const original = anyNode.__originalText;
             const translated = translateString(original, language);
             if (node.textContent !== translated) {
               node.textContent = translated;
             }
+            anyNode.__lastTranslatedText = translated;
           }
         });
 

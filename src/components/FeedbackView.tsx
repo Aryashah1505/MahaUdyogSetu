@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, 
   Star, 
@@ -60,22 +60,83 @@ export const FeedbackView: React.FC<FeedbackViewProps> = ({
     }
   ]);
 
+  // Load live feedback records from backend database
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveFeedback() {
+      try {
+        const token = 
+          sessionStorage.getItem('mahau_session_token') || 
+          localStorage.getItem('mahau_session_token') || 
+          sessionStorage.getItem('mahau_auth_token') || 
+          localStorage.getItem('mahau_auth_token');
+        if (!token) return;
+        const res = await fetch('/api/feedback', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.feedback && Array.isArray(data.feedback) && data.feedback.length > 0 && isMounted) {
+            const mapped: FeedbackItem[] = data.feedback.map((f: any) => ({
+              id: f.id,
+              rating: f.rating || 5,
+              category: f.feedbackType || f.feedback_type || 'Portal Usability & Ease of Access',
+              serviceName: f.relatedModule || f.related_module || 'Single Window System',
+              comments: f.feedbackText || f.feedback_text || f.comments || '',
+              submittedDate: new Date(f.createdAt || f.created_at || Date.now()).toLocaleDateString('en-GB'),
+              status: f.status === 'addressed' ? 'Reviewed by Department' : 'Published'
+            }));
+            setFeedbackList(prev => [...mapped, ...prev.filter(p => !mapped.some(m => m.id === p.id))]);
+          }
+        }
+      } catch (err) {
+        console.warn('Live feedback fetch notice:', err);
+      }
+    }
+    fetchLiveFeedback();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!comments.trim()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const newFeedback: FeedbackItem = {
-        id: `FB-MH-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        rating,
-        category,
-        serviceName,
-        comments: comments.trim(),
-        submittedDate: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        status: 'Reviewed by Department'
-      };
+    const generatedId = `FB-MH-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newFeedback: FeedbackItem = {
+      id: generatedId,
+      rating,
+      category,
+      serviceName: serviceName || 'Single Window Services',
+      comments: comments.trim(),
+      submittedDate: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      status: 'Reviewed by Department'
+    };
 
+    // Post to Supabase backend API
+    const token = 
+      sessionStorage.getItem('mahau_session_token') || 
+      localStorage.getItem('mahau_session_token') || 
+      sessionStorage.getItem('mahau_auth_token') || 
+      localStorage.getItem('mahau_auth_token');
+
+    if (token) {
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          rating,
+          feedbackType: category,
+          relatedModule: serviceName || 'Single Window System',
+          feedbackText: comments.trim()
+        })
+      }).catch(err => console.warn('Submit feedback notice:', err));
+    }
+
+    setTimeout(() => {
       setFeedbackList([newFeedback, ...feedbackList]);
       setIsSubmitting(false);
       setSubmitSuccess(true);

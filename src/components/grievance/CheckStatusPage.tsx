@@ -56,7 +56,11 @@ export const CheckStatusPage: React.FC<CheckStatusPageProps> = ({ profile }) => 
     setHasSearched(false);
 
     try {
-      const token = localStorage.getItem('mahau_auth_token') || sessionStorage.getItem('mahau_auth_token');
+      const token = 
+        sessionStorage.getItem('mahau_session_token') || 
+        localStorage.getItem('mahau_session_token') || 
+        sessionStorage.getItem('mahau_auth_token') || 
+        localStorage.getItem('mahau_auth_token');
       const response = await fetch(`/api/grievances/status/${encodeURIComponent(searchGrievanceId.trim())}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})

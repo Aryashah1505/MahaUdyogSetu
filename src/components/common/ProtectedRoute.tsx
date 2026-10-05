@@ -13,15 +13,22 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   const currentPath = location.pathname + location.search + location.hash;
 
+  const isPublicRoute = 
+    location.pathname === '/' || 
+    location.pathname === '/home' || 
+    location.pathname === '/landing' || 
+    location.pathname.startsWith('/login') || 
+    location.pathname.startsWith('/register');
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isLoading && !isAuthenticated && !isPublicRoute) {
       try {
         sessionStorage.setItem('mahau_redirect_after_login', currentPath);
       } catch (err) {
         console.error('Error saving return URL:', err);
       }
     }
-  }, [isLoading, isAuthenticated, currentPath]);
+  }, [isLoading, isAuthenticated, currentPath, isPublicRoute]);
 
   // Clean GovTech loading screen during session hydration
   if (isLoading) {
@@ -38,8 +45,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  // Not authenticated -> immediately redirect to /login with target preserved
+  // Not authenticated -> redirect to /login with target preserved (unless already a public route)
   if (!isAuthenticated) {
+    if (isPublicRoute) {
+      return <Navigate to="/login" replace />;
+    }
     const encodedRedirect = encodeURIComponent(currentPath);
     return <Navigate to={`/login?redirect=${encodedRedirect}`} state={{ from: location }} replace />;
   }

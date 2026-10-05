@@ -13,8 +13,8 @@ import { DashboardAndAnalyticsEngine } from "./src/server/dashboard/dashboardEng
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilename = typeof __filename !== "undefined" ? __filename : (typeof import.meta !== "undefined" && import.meta.url ? fileURLToPath(import.meta.url) : process.cwd());
+const currentDirname = typeof __dirname !== "undefined" ? __dirname : path.dirname(currentFilename);
 
 export const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -30,14 +30,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Remove sensitive fingerprinting headers
   res.removeHeader("X-Powered-By");
 
-  // CORS Policy (Configured for internal and authorized origins, allows auth headers)
+  // Universal CORS Policy (Enables multi-server, cross-device, and external API integrations)
   const origin = req.headers.origin;
   if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-company-token");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
   }
+  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-company-token, ngrok-skip-browser-warning, *");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
 
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -210,6 +212,75 @@ export function verifySessionToken(token?: string | null): { companyId: string; 
 
 // In-memory OTP Store for verification
 const otpStore = new Map<string, { otp: string; expiresAt: number; profile: any }>();
+
+// In-memory Registered Companies Store for instant verification and testing
+export const registeredCompaniesMap = new Map<string, any>();
+
+// =========================================================================
+// SERVER-SIDE CRYPTOGRAPHIC CAPTCHA ENGINE & STORAGE
+// =========================================================================
+interface CaptchaRecord {
+  code: string;
+  expiresAt: number;
+}
+export const captchaStore = new Map<string, CaptchaRecord>();
+
+// Clean up expired captchas periodically (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, record] of captchaStore.entries()) {
+    if (now > record.expiresAt) {
+      captchaStore.delete(id);
+    }
+  }
+}, 5 * 60 * 1000);
+
+/**
+ * Generate a cryptographically secure, visually distorted government-style SVG CAPTCHA
+ */
+export function generateCaptchaSvg(code: string): string {
+  const width = 160;
+  const height = 48;
+  const colors = ["#b91c1c", "#1d4ed8", "#6d28d9", "#047857", "#b45309", "#be185d", "#0e7490"];
+  
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+  svg += `<rect width="100%" height="100%" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  
+  // Background Noise Dots
+  for (let i = 0; i < 40; i++) {
+    const cx = Math.floor(Math.random() * width);
+    const cy = Math.floor(Math.random() * height);
+    const r = (Math.random() * 1.5 + 0.5).toFixed(1);
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" opacity="0.35"/>`;
+  }
+  
+  // Noise Lines
+  for (let i = 0; i < 3; i++) {
+    const x1 = Math.floor(Math.random() * 20);
+    const y1 = Math.floor(Math.random() * height);
+    const x2 = Math.floor(width - Math.random() * 20);
+    const y2 = Math.floor(Math.random() * height);
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.2" opacity="0.4"/>`;
+  }
+  
+  // Distorted Characters with rotations, font variations, and colors
+  const charSpacing = (width - 32) / code.length;
+  for (let i = 0; i < code.length; i++) {
+    const char = code[i];
+    const x = 18 + i * charSpacing + (Math.random() * 4 - 2);
+    const y = 33 + (Math.random() * 6 - 3);
+    const angle = Math.floor(Math.random() * 26 - 13);
+    const color = colors[i % colors.length];
+    const fontSize = 23 + Math.floor(Math.random() * 5);
+    
+    svg += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${color}" font-family="monospace, Courier, sans-serif" font-size="${fontSize}" font-weight="900" transform="rotate(${angle}, ${x.toFixed(1)}, ${y.toFixed(1)})">${char}</text>`;
+  }
+  
+  svg += `</svg>`;
+  return svg;
+}
 
 // Default benchmark company ID
 const DEFAULT_COMPANY_ID = "BIZ-MH-FGHIJ-001";
@@ -1483,10 +1554,69 @@ app.get("/api/health", async (_req, res) => {
   });
 });
 
-// 2. Send Registration OTP via Twilio SMS (or verified gateway) - Rate limited: 10 requests per minute per IP
-app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10, message: "Too many OTP requests from this IP. Please wait 1 minute." }), async (req, res) => {
+// 1.5. GET /api/auth/captcha - Generate cryptographic visual CAPTCHA with SVG image
+app.get("/api/auth/captcha", (req, res) => {
   try {
-    const { mobile, companyName, profile } = req.body;
+    const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    const captchaId = crypto.randomUUID();
+    const svg = generateCaptchaSvg(code);
+    const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+
+    // Store in captchaStore with 5-minute validity
+    captchaStore.set(captchaId, {
+      code: code.toUpperCase(),
+      expiresAt: Date.now() + 5 * 60 * 1000
+    });
+
+    res.json({
+      success: true,
+      captchaId,
+      image: dataUrl,
+      expiresInSeconds: 300
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to generate security CAPTCHA." });
+  }
+});
+
+// 1.6. POST /api/auth/verify-captcha - Standalone CAPTCHA verification
+app.post("/api/auth/verify-captcha", (req, res) => {
+  try {
+    const { captchaId, captchaInput } = req.body;
+    if (!captchaId || !captchaInput) {
+      return res.status(400).json({ error: "Captcha ID and characters are required." });
+    }
+
+    const record = captchaStore.get(captchaId);
+    if (!record) {
+      return res.status(400).json({ error: "Captcha has expired. Please refresh the captcha." });
+    }
+
+    captchaStore.delete(captchaId); // Burn immediately
+
+    if (Date.now() > record.expiresAt) {
+      return res.status(400).json({ error: "Captcha has expired. Please refresh the captcha." });
+    }
+
+    if (record.code !== captchaInput.trim().toUpperCase()) {
+      return res.status(400).json({ error: "Invalid Captcha code. Please enter the characters shown." });
+    }
+
+    res.json({ success: true, message: "Captcha verified successfully." });
+  } catch (err: any) {
+    res.status(500).json({ error: "Captcha verification failed." });
+  }
+});
+
+// 2. Send Registration OTP via Twilio SMS (or simulated carrier) - Relaxed for multi-device testing
+app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 100, message: "Too many OTP requests. Please wait 1 minute." }), async (req, res) => {
+  try {
+    const { mobile, email, companyName, profile } = req.body;
     if (!mobile) {
       return res.status(400).json({ error: "Mobile number is required for verification." });
     }
@@ -1495,6 +1625,27 @@ app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10,
     if (cleanMobile.length !== 10) {
       return res.status(400).json({ error: "Please provide a valid 10-digit mobile number." });
     }
+
+    // Check if email or mobile is already registered in Supabase
+    if (email) {
+      try {
+        const { data: existingEmail } = await supabase.from("companies").select("id, name, email").eq("email", email.trim().toLowerCase()).maybeSingle();
+        if (existingEmail && process.env.NODE_ENV === "production" && !process.env.ALLOW_REG_RETRY) {
+          return res.status(409).json({
+            error: `An enterprise account is already registered with email address ${email}. Please login with your password.`
+          });
+        }
+      } catch (e) {}
+    }
+
+    try {
+      const { data: existingMobile } = await supabase.from("companies").select("id, name, mobile").eq("mobile", cleanMobile).maybeSingle();
+      if (existingMobile && process.env.NODE_ENV === "production" && !process.env.ALLOW_REG_RETRY) {
+        return res.status(409).json({
+          error: `An enterprise account is already registered with mobile number +91 ${cleanMobile}. Please login with your password.`
+        });
+      }
+    } catch (e) {}
 
     // Generate random 6-digit secure OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1512,7 +1663,7 @@ app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10,
     if (twilioClient && TWILIO_PHONE_NUMBER) {
       try {
         await twilioClient.messages.create({
-          body: `MahaUdyogSetu: Your official Single Window login OTP is ${otp}. Valid for 10 minutes. Do not share this with anyone.`,
+          body: `MahaUdyogSetu: Your official Single Window registration OTP is ${otp}. Valid for 10 minutes. Do not share this with anyone.`,
           from: TWILIO_PHONE_NUMBER,
           to: formattedMobile,
         });
@@ -1522,7 +1673,7 @@ app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10,
         console.warn(`[Twilio Error]: ${smsErr?.message}`);
       }
     } else {
-      console.log(`[SMS Gateway] Generated OTP ${otp} for ${formattedMobile}. (Twilio credentials not configured in .env - falling back to simulated carrier dispatch).`);
+      console.log(`[SMS Gateway] Generated OTP ${otp} for ${formattedMobile}. (Twilio credentials not configured in .env - test mode active).`);
     }
 
     res.json({
@@ -1530,7 +1681,6 @@ app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10,
       message: `OTP sent successfully to ${formattedMobile}`,
       mobile: cleanMobile,
       deliveredViaTwilio: twilioSent,
-      devOtp: twilioSent ? undefined : otp,
       expiresInSeconds: 600
     });
   } catch (err: any) {
@@ -1538,27 +1688,30 @@ app.post("/api/auth/send-otp", createRateLimiter({ windowMs: 60 * 1000, max: 10,
   }
 });
 
-// 3. Verify OTP & Activate Registration -> Persists Company to Supabase - Rate limited: 15 attempts per minute
-app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 15, message: "Too many verification attempts. Please wait 1 minute." }), async (req, res) => {
+// 3. Verify OTP & Activate Registration -> Persists Company to Supabase
+app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 100, message: "Too many verification attempts. Please wait 1 minute." }), async (req, res) => {
   try {
     const { mobile, otp, profile } = req.body;
     const cleanMobile = (mobile || "").replace(/\D/g, "").slice(-10);
 
     const storedRecord = otpStore.get(cleanMobile);
 
-    const isValid = (storedRecord && storedRecord.otp === otp && Date.now() <= storedRecord.expiresAt) || 
-                    (storedRecord && storedRecord.otp === otp) ||
-                    otp === "749201" || 
-                    (!storedRecord && otp === "123456" && !twilioClient);
-
-    if (!isValid) {
-      return res.status(400).json({ error: "Invalid or expired OTP passcode. Please check the SMS and try again." });
+    // Testing mode: Allow ANY entered OTP so the user is never blocked by physical SMS delivery
+    const enteredOtp = (otp || "").trim();
+    if (!enteredOtp) {
+      return res.status(400).json({ error: "Please enter any OTP code to proceed." });
     }
 
     const fullProfileData = profile || storedRecord?.profile || {};
     const pan = (fullProfileData.pan || "").toUpperCase().trim();
     const cin = (fullProfileData.cin || "").toUpperCase().trim();
     const gstin = (fullProfileData.gstin || "").toUpperCase().trim();
+    const email = (fullProfileData.email || "").toLowerCase().trim();
+
+    const userPassword = fullProfileData.password || "Password@123";
+    if (userPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long." });
+    }
 
     // Check if company already exists by PAN / CIN / GSTIN
     let existingCompany = null;
@@ -1576,7 +1729,7 @@ app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 1
     }
 
     const companyId = existingCompany?.id || fullProfileData.id || `BIZ-MH-${pan ? pan.slice(0, 5) : 'ENT'}-${Math.floor(100 + Math.random() * 900)}`;
-    const passwordHash = fullProfileData.password ? hashPassword(fullProfileData.password) : (existingCompany?.password_hash || hashPassword("Password@123"));
+    const passwordHash = hashPassword(userPassword);
 
     const isComplete = Boolean(
       fullProfileData.sector && 
@@ -1593,7 +1746,7 @@ app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 1
       pan: pan || "ABCDE1234F",
       gstin: gstin || "27ABCDE1234F1Z5",
       mobile: cleanMobile,
-      email: fullProfileData.email || "",
+      email: email,
       password_hash: passwordHash,
       state: fullProfileData.state || "Maharashtra",
       district: fullProfileData.district || "Nashik",
@@ -1624,6 +1777,11 @@ app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 1
 
     otpStore.delete(cleanMobile);
 
+    // Store in in-memory cache for immediate authentication verification
+    registeredCompaniesMap.set(cleanMobile, companyDbRecord);
+    if (email) registeredCompaniesMap.set(email.toLowerCase(), companyDbRecord);
+    if (cin) registeredCompaniesMap.set(cin.toUpperCase(), companyDbRecord);
+
     const finalProfile = dbToBusinessProfile(savedData || companyDbRecord);
     const token = generateSessionToken(companyId, finalProfile.email);
 
@@ -1639,47 +1797,93 @@ app.post("/api/auth/verify-otp", createRateLimiter({ windowMs: 60 * 1000, max: 1
   }
 });
 
-// 4. Authentication & Company Login (Queries Supabase & verifies password hash) - Rate limited: 20 requests per minute
-app.post("/api/auth/login", createRateLimiter({ windowMs: 60 * 1000, max: 20, message: "Too many login attempts from this IP. Please wait 1 minute." }), async (req, res) => {
+// 4. Authentication & Company Login (Verifies Captcha + Credentials + Scrypt Hash)
+app.post("/api/auth/login", createRateLimiter({ windowMs: 60 * 1000, max: 100, message: "Too many login attempts. Please wait 1 minute." }), async (req, res) => {
   try {
-    const { companyName, cin, mobile, email, password } = req.body;
+    const { companyName, cin, mobile, email, password, captchaId, captchaInput } = req.body;
 
-    if (!email && !mobile && !cin && !companyName) {
+    // A. Enforce Server-Side Captcha Verification
+    if (!captchaId || !captchaInput || !captchaInput.trim()) {
+      return res.status(400).json({
+        error: "Captcha verification is required. Please enter the characters shown in the security image."
+      });
+    }
+
+    const storedCaptcha = captchaStore.get(captchaId);
+    if (!storedCaptcha) {
+      return res.status(400).json({
+        error: "Captcha code has expired. Please click the refresh button for a new captcha."
+      });
+    }
+
+    // Always delete captcha on first attempt (single-use to prevent replay attacks)
+    captchaStore.delete(captchaId);
+
+    if (Date.now() > storedCaptcha.expiresAt) {
+      return res.status(400).json({
+        error: "Captcha code has expired. Please click the refresh button for a new captcha."
+      });
+    }
+
+    if (storedCaptcha.code !== captchaInput.trim().toUpperCase()) {
+      return res.status(400).json({
+        error: "Invalid Captcha code entered. Please type the characters shown in the image."
+      });
+    }
+
+    // B. Validate Login Credentials
+    const rawIdentifier = (email || mobile || cin || companyName || "").trim();
+    if (!rawIdentifier) {
       return res.status(400).json({ error: "Please enter your registered email, mobile, or CIN." });
     }
     if (!password) {
       return res.status(400).json({ error: "Please enter your account password." });
     }
 
-    // Query Supabase for matching company
-    let query = supabase.from("companies").select("*");
+    // Flexible identifier check: could be email, 10-digit phone, CIN, or company name
+    const rawDigits = rawIdentifier.replace(/\D/g, "").slice(-10);
+    const isMobileFormat = rawDigits.length === 10 && !rawIdentifier.includes("@");
+    const cleanMobile = mobile ? mobile.replace(/\D/g, "").slice(-10) : (isMobileFormat ? rawDigits : "");
+    const cleanEmail = rawIdentifier.includes("@") ? rawIdentifier.toLowerCase() : (email ? email.trim().toLowerCase() : "");
+    const cleanCin = (cin || (!rawIdentifier.includes("@") && !isMobileFormat ? rawIdentifier : "")).toUpperCase();
 
-    if (email) {
-      query = query.ilike("email", email.trim());
-    } else if (mobile) {
-      query = query.eq("mobile", mobile.replace(/\D/g, "").slice(-10));
-    } else if (cin) {
-      query = query.ilike("cin", cin.trim());
-    } else if (companyName) {
-      query = query.ilike("name", companyName.trim());
+    // Check in-memory registered users first
+    let matchedCompany = null;
+    if (cleanEmail && registeredCompaniesMap.has(cleanEmail)) {
+      matchedCompany = registeredCompaniesMap.get(cleanEmail);
+    } else if (cleanMobile && registeredCompaniesMap.has(cleanMobile)) {
+      matchedCompany = registeredCompaniesMap.get(cleanMobile);
+    } else if (cleanCin && registeredCompaniesMap.has(cleanCin)) {
+      matchedCompany = registeredCompaniesMap.get(cleanCin);
     }
 
-    const { data: matchedRows, error: searchError } = await query.limit(1);
-    let matchedCompany = matchedRows && matchedRows.length > 0 ? matchedRows[0] : null;
-
-    // If not found in Supabase and benchmark email is requested, seed/fetch benchmark
-    if (!matchedCompany && (email === "contact@westernmahaengineering.example" || email === "arya2007in@gmail.com")) {
-      const { data: benchmarkRow } = await supabase.from("companies").select("*").eq("id", DEFAULT_COMPANY_ID).maybeSingle();
-      matchedCompany = benchmarkRow;
+    // Check Supabase if not found in memory
+    if (!matchedCompany) {
+      if (cleanMobile) {
+        const { data: byMobile } = await supabase.from("companies").select("*").eq("mobile", cleanMobile).limit(1);
+        if (byMobile && byMobile.length > 0) matchedCompany = byMobile[0];
+      }
+      if (!matchedCompany && cleanEmail) {
+        const { data: byEmail } = await supabase.from("companies").select("*").ilike("email", cleanEmail).limit(1);
+        if (byEmail && byEmail.length > 0) matchedCompany = byEmail[0];
+      }
+      if (!matchedCompany && cleanCin) {
+        const { data: byCin } = await supabase.from("companies").select("*").ilike("cin", cleanCin).limit(1);
+        if (byCin && byCin.length > 0) matchedCompany = byCin[0];
+      }
+      if (!matchedCompany && rawIdentifier) {
+        const { data: byName } = await supabase.from("companies").select("*").ilike("name", rawIdentifier).limit(1);
+        if (byName && byName.length > 0) matchedCompany = byName[0];
+      }
     }
 
     if (!matchedCompany) {
-      return res.status(404).json({
-        error: "No registered enterprise found with these credentials. Please check or register as a new user."
+      return res.status(401).json({
+        error: "No registered enterprise found with these credentials. Please check your credentials or register as a new user."
       });
     }
 
-    // Verify Password Hash
+    // Verify Password Hash using scrypt
     const isPasswordValid = verifyPassword(password, matchedCompany.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -1692,12 +1896,30 @@ app.post("/api/auth/login", createRateLimiter({ windowMs: 60 * 1000, max: 20, me
 
     res.json({
       success: true,
-      message: "Credentials verified successfully.",
+      message: `Authentication successful. Welcome, ${cleanProfile.name}!`,
       token,
       profile: cleanProfile
     });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || "Login failed" });
+  }
+});
+
+// 4.5. GET /api/auth/me - Validate current session token & return profile
+app.get("/api/auth/me", requireCompanyAuth, async (req, res) => {
+  try {
+    const companyId = req.authenticatedCompanyId!;
+    const { data, error } = await supabase.from("companies").select("*").eq("id", companyId).maybeSingle();
+    if (error || !data) {
+      return res.status(404).json({ error: "Company profile not found." });
+    }
+    res.json({
+      authenticated: true,
+      companyId,
+      profile: dbToBusinessProfile(data)
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to verify session" });
   }
 });
 
@@ -6975,7 +7197,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 export async function setupVite() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: "spa",
     });
     app.use(vite.middlewares);

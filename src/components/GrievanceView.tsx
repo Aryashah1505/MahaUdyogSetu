@@ -59,23 +59,93 @@ export const GrievanceView: React.FC<GrievanceViewProps> = ({
     }
   ]);
 
+  // Load live grievances from backend API
+  React.useEffect(() => {
+    let isMounted = true;
+    async function fetchLiveGrievances() {
+      try {
+        const token = 
+          sessionStorage.getItem('mahau_session_token') || 
+          localStorage.getItem('mahau_session_token') || 
+          sessionStorage.getItem('mahau_auth_token') || 
+          localStorage.getItem('mahau_auth_token');
+        if (!token) return;
+
+        const res = await fetch('/api/grievances', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.grievances && Array.isArray(data.grievances) && data.grievances.length > 0 && isMounted) {
+            const mapped: GrievanceRecord[] = data.grievances
+              .filter((g: any) => g.type !== 'query')
+              .map((g: any) => ({
+                id: g.id,
+                grievanceSubject: g.subject || g.grievanceSubject || 'Statutory Clearance Inquiry',
+                department: g.department || 'Industries Department',
+                actOrService: g.serviceRelated || g.service_related || 'Single Window Services',
+                description: g.description || '',
+                submittedDate: new Date(g.createdAt || g.created_at || Date.now()).toLocaleDateString('en-GB'),
+                status: (g.status === 'Resolved' ? 'Resolved' : g.status === 'In Progress' ? 'Action Taken' : 'Submitted') as any,
+                actionTakenDetails: g.resolutionNotes || g.resolution_notes || undefined,
+                rtsEscalationLevel: 'Level 1 (Nodal Officer)'
+              }));
+            if (mapped.length > 0) {
+              setGrievances(prev => [...mapped, ...prev.filter(p => !mapped.some(m => m.id === p.id))]);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Live grievance fetch notice:', err);
+      }
+    }
+    fetchLiveGrievances();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleRegisterGrievance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !description.trim()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const newGrv: GrievanceRecord = {
-        id: `GRV-RTS-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        grievanceSubject: subject.trim(),
-        department,
-        actOrService,
-        description: description.trim(),
-        submittedDate: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-        status: 'Submitted',
-        rtsEscalationLevel: 'Level 1 (Nodal Officer)'
-      };
+    const generatedId = `GRV-RTS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newGrv: GrievanceRecord = {
+      id: generatedId,
+      grievanceSubject: subject.trim(),
+      department,
+      actOrService,
+      description: description.trim(),
+      submittedDate: `${new Date().toLocaleDateString('en-GB')}, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      status: 'Submitted',
+      rtsEscalationLevel: 'Level 1 (Nodal Officer)'
+    };
 
+    // Post to backend database
+    const token = 
+      sessionStorage.getItem('mahau_session_token') || 
+      localStorage.getItem('mahau_session_token') || 
+      sessionStorage.getItem('mahau_auth_token') || 
+      localStorage.getItem('mahau_auth_token');
+
+    if (token) {
+      fetch('/api/grievances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'grievance',
+          subject: subject.trim(),
+          department,
+          serviceRelated: actOrService,
+          description: description.trim(),
+          rtsEscalationLevel: 'Level 1 (Nodal Officer)'
+        })
+      }).catch(err => console.warn('Submit grievance notice:', err));
+    }
+
+    setTimeout(() => {
       setGrievances([newGrv, ...grievances]);
       setIsSubmitting(false);
       setShowRegisterModal(false);
