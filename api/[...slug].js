@@ -1539,23 +1539,37 @@ function createRateLimiter(options) {
     if (process.env.NODE_ENV === "test" && !req.headers["x-test-rate-limit"]) {
       return next();
     }
-    const ip = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
-    const key = `${req.path}:${ip}`;
-    const now = Date.now();
-    let record = rateLimitMap.get(key);
-    if (!record || now > record.resetTime) {
-      record = { count: 1, resetTime: now + options.windowMs };
-      rateLimitMap.set(key, record);
-    } else {
-      record.count++;
-    }
-    res.setHeader("X-RateLimit-Limit", options.max);
-    res.setHeader("X-RateLimit-Remaining", Math.max(0, options.max - record.count));
-    res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetTime / 1e3));
-    if (record.count > options.max) {
-      return res.status(429).json({
-        error: options.message || "Too many requests. Please wait and try again later."
-      });
+    try {
+      let ip = "127.0.0.1";
+      const forwarded = req.headers["x-forwarded-for"];
+      if (typeof forwarded === "string" && forwarded) {
+        ip = forwarded.split(",")[0].trim();
+      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+        ip = forwarded[0].trim();
+      } else if (req.headers["x-real-ip"]) {
+        ip = req.headers["x-real-ip"];
+      } else if (req.socket?.remoteAddress) {
+        ip = req.socket.remoteAddress;
+      }
+      const key = `${req.path}:${ip}`;
+      const now = Date.now();
+      let record = rateLimitMap.get(key);
+      if (!record || now > record.resetTime) {
+        record = { count: 1, resetTime: now + options.windowMs };
+        rateLimitMap.set(key, record);
+      } else {
+        record.count++;
+      }
+      res.setHeader("X-RateLimit-Limit", options.max);
+      res.setHeader("X-RateLimit-Remaining", Math.max(0, options.max - record.count));
+      res.setHeader("X-RateLimit-Reset", Math.ceil(record.resetTime / 1e3));
+      if (record.count > options.max) {
+        return res.status(429).json({
+          error: options.message || "Too many requests. Please wait and try again later."
+        });
+      }
+    } catch (limiterErr) {
+      console.warn("[RateLimiter Notice]:", limiterErr);
     }
     next();
   };
@@ -7052,6 +7066,7 @@ app.use((err, _req, res, _next) => {
   });
 });
 async function setupVite() {
+  if (process.env.VERCEL) return;
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -7070,7 +7085,7 @@ async function setupVite() {
     console.log(`MahaUdyogSetu Server running on http://0.0.0.0:${PORT}`);
   });
 }
-var isMain = process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.cjs") || process.argv[1].endsWith("server.js"));
+var isMain = !process.env.VERCEL && process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.cjs") || process.argv[1].endsWith("server.js"));
 if (isMain && process.env.NODE_ENV !== "test") {
   setupVite().catch((err) => {
     console.error("Failed to start server:", err);
