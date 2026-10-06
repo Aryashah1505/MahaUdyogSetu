@@ -109,9 +109,14 @@ function AppContent() {
         // 1. Fetch Applications
         const appRes = await fetch('/api/applications', {
           headers: {
-            Authorization: `Bearer ${storedToken}`
+            Authorization: `Bearer ${storedToken}`,
+            'x-company-token': storedToken
           }
         });
+        if (appRes.status === 401 || appRes.status === 403) {
+          if (isMounted) logout();
+          return;
+        }
         if (appRes.ok) {
           const data = await appRes.json();
           if (data.applications && Array.isArray(data.applications) && data.applications.length > 0 && isMounted) {
@@ -125,9 +130,14 @@ function AppContent() {
         // 2. Fetch Documents Vault
         const docRes = await fetch('/api/documents', {
           headers: {
-            Authorization: `Bearer ${storedToken}`
+            Authorization: `Bearer ${storedToken}`,
+            'x-company-token': storedToken
           }
         });
+        if (docRes.status === 401 || docRes.status === 403) {
+          if (isMounted) logout();
+          return;
+        }
         if (docRes.ok) {
           const docData = await docRes.json();
           if (docData.documents && Array.isArray(docData.documents) && isMounted) {
